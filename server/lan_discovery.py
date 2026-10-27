@@ -15,6 +15,7 @@ import argparse
 import subprocess
 import shutil
 import time
+import select
 
 # Ensure server path is in sys.path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -33,71 +34,96 @@ DISCOVERY_REQUEST = b'WOLFTEAM_2012_LAN_DISCOVER_V1'
 DISCOVERY_REPLY = b'WOLFTEAM_2012_LAN_SERVER_V1'
 
 
-def get_broadcast_targets():
-    """Return directed broadcasts for active private and Radmin interfaces."""
+def get_broadcast_interfaces():
+    """Return source/broadcast pairs, including Windows virtual adapters."""
     if sys.platform != 'win32':
         return []
     powershell = shutil.which('pwsh.exe') or shutil.which('powershell.exe')
     if not powershell:
         return []
-    script = r'''$rows=@(Get-NetIPConfiguration | Where-Object {$_.NetAdapter.Status -eq 'Up'} | ForEach-Object {
-  $c=$_; foreach($a in $c.IPv4Address) {
-    [pscustomobject]@{IP=$a.IPAddress; Prefix=[int]$a.PrefixLength; Description=$c.NetAdapter.InterfaceDescription}
-  }
+    script = r'''$ErrorActionPreference='Stop'
+[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
+$adapters=@{}
+Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue | ForEach-Object { $adapters[$_.ifIndex]=$_ }
+$rows=@(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object {
+  $a=$_; $adapter=$adapters[$a.InterfaceIndex]
+  if($a.AddressState -in @('Invalid','Duplicate','Tentative')) { return }
+  if($adapter -and $adapter.Status -ne 'Up') { return }
+  [pscustomobject]@{IP=$a.IPAddress; Prefix=[int]$a.PrefixLength; Description=[string]$adapter.InterfaceDescription; Alias=$a.InterfaceAlias}
 }); ConvertTo-Json -InputObject $rows -Compress'''
     try:
         result = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-Command', script],
-                                capture_output=True, text=True, timeout=6,
+                                capture_output=True, text=True, encoding='utf-8',
+                                errors='replace', timeout=10,
                                 creationflags=0x08000000)
         if result.returncode:
             return []
         rows = json.loads(result.stdout.lstrip('\ufeff'))
         if isinstance(rows, dict):
-            rows = [rows]
+            rows = rows.get('value', rows.get('Value', [rows]))
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, TypeError):
         return []
-    targets = set()
+    interfaces = set()
     for row in rows:
         try:
             address = ipaddress.ip_address(row['IP'])
             network = ipaddress.ip_interface(f"{address}/{int(row['Prefix'])}").network
-            description = row.get('Description', '').lower()
+            description = (row.get('Description', '') + ' ' + row.get('Alias', '')).lower()
             radmin = 'radmin' in description or 'famatech' in description
             if radmin:
                 if address not in ipaddress.ip_network('26.0.0.0/8'):
                     continue
-                targets.add(str(network.broadcast_address))
+                interfaces.add((str(address), str(network.broadcast_address)))
             elif address.is_private and not address.is_loopback:
-                targets.add(str(network.broadcast_address))
+                interfaces.add((str(address), str(network.broadcast_address)))
         except (KeyError, ValueError, TypeError):
             continue
-    return sorted(targets)
+    return sorted(interfaces)
+
+
+def get_broadcast_targets():
+    return sorted({target for _, target in get_broadcast_interfaces()})
 
 
 def discover_by_broadcast(port=DISCOVERY_PORT, timeout=0.65):
     """Find Logan hosts without scanning Radmin's large virtual subnet."""
-    targets = get_broadcast_targets()
-    if not targets:
+    interfaces = get_broadcast_interfaces()
+    if not interfaces:
         return []
     found = set()
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.settimeout(0.1)
-        for target in targets:
+    sockets = []
+    try:
+        for source, target in interfaces:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
-                sock.sendto(DISCOVERY_REQUEST, (target, port))
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                sock.bind((source, 0))
+                sock.setblocking(False)
             except OSError:
+                sock.close()
                 continue
+            sockets.append(sock)
+            for destination in {target, '255.255.255.255'}:
+                try:
+                    sock.sendto(DISCOVERY_REQUEST, (destination, port))
+                except OSError:
+                    continue
         end = time.monotonic() + timeout
-        while time.monotonic() < end:
+        while sockets and time.monotonic() < end:
             try:
-                data, peer = sock.recvfrom(256)
-                if data.startswith(DISCOVERY_REPLY):
-                    found.add(peer[0])
-            except socket.timeout:
-                continue
+                readable, _, _ = select.select(sockets, [], [], max(0, end - time.monotonic()))
             except OSError:
                 break
+            for sock in readable:
+                try:
+                    data, peer = sock.recvfrom(256)
+                    if data == DISCOVERY_REPLY:
+                        found.add(peer[0])
+                except OSError:
+                    continue
+    finally:
+        for sock in sockets:
+            sock.close()
     return sorted(found)
 
 

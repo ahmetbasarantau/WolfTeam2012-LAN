@@ -16,7 +16,7 @@ Bu depo, 2012 istemcisiyle ev ağı veya Radmin VPN üzerinden arkadaşlarla oyn
 
 Kurulum, oyunun LAN bileşenleri için taşınabilir Python'u indirir; Direct3D uyumluluk dosyaları yama ZIP'inde hazır gelir. Katılımcı bilgisayara Python veya Java kurmak gerekmez. Sunucu kurulurken JDK 17, PHP ve MariaDB oyun klasörünün içindeki `.runtime` dizinine indirilir; sistem PATH'ine eklenmez. Sunucu bilgisayarında envanter yöneticisi için Python/Tk ve Pillow da aynı şekilde yerel klasöre hazırlanır. Envanter yöneticisi başka bir bilgisayarda ilk kez açılırsa gerekli bileşenleri kendi `.runtime` klasörüne indirir. İlk kurulum internet bağlantısı gerektirir. Oyunu başlatırken yerel ağ kuralları için Windows yönetici izni istenir.
 
-Ev ağındaki bilgisayarlar aynı ağa bağlansın. Farklı ağlardaki oyuncular aynı Radmin VPN ağına katılsın. Sunucu sahibi `WolfteamBaslat.bat` içinde **1** seçer; arkadaşları **2** seçip listeden sunucuyu seçer. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
+Ev ağındaki bilgisayarlar aynı ağa bağlansın. Farklı ağlardaki oyuncular aynı Radmin VPN ağına katılsın. Aynı ev ağındaki oyuncular da Radmin üzerinden katılabilir; bu durumda tüm oyuncular aynı Radmin ağına bağlı olsun. Sunucu sahibi `WolfteamBaslat.bat` içinde **1** seçer; arkadaşları **2** seçip listeden sunucuyu seçer. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
 
 Başlatıcı, oyunun güncelleme adresini her oturumda seçilen LAN/Radmin sunucusuna yönlendirir ve oyun kapandıktan sonra dosyanın önceki içeriğini geri yükler. Arkadaş bilgisayarında `127.0.0.1` kendi bilgisayarını gösterdiğinden bu yönlendirme güncelleme denetiminin sunucuya ulaşmasını sağlar.
 

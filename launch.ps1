@@ -122,7 +122,7 @@ if(Test-Path -LiteralPath $accountCacheFile){try{$cache=@(Get-Content -LiteralPa
 if($cache -notcontains $Nick){$cache+= $Nick}
 $cache | Sort-Object -Unique | ConvertTo-Json | Set-Content -LiteralPath $accountCacheFile -Encoding utf8
 function Get-LanAddress {
-    $configs=@(Get-NetIPConfiguration | Where-Object {$_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address})
+    $configs=@(Get-NetIPConfiguration -All | Where-Object {$_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address})
     foreach($config in $configs){
         if($config.NetAdapter.InterfaceDescription -match '(?i)Radmin|Famatech'){
             foreach($address in $config.IPv4Address){if($address.IPAddress -match '^26\.') {return $address}}
@@ -310,7 +310,7 @@ if([Net.IPAddress]::IsLoopback($parsed)){$subnet='127.0.0.0/8'}else{
     if(-not $route){throw 'LAN rotasi bulunamadi.'}
     $radminTarget=$targetAddress -match '^26\.'
     if($radminTarget){
-        $radminAddresses=@(Get-NetIPConfiguration | Where-Object {$_.NetAdapter.Status -eq 'Up' -and $_.NetAdapter.InterfaceDescription -match '(?i)Radmin|Famatech'} | ForEach-Object {$_.IPv4Address} | ForEach-Object {$_.IPAddress} | Where-Object {$_ -match '^26\.'})
+        $radminAddresses=@(Get-NetIPConfiguration -All | Where-Object {$_.NetAdapter.Status -eq 'Up' -and $_.NetAdapter.InterfaceDescription -match '(?i)Radmin|Famatech'} | ForEach-Object {$_.IPv4Address} | ForEach-Object {$_.IPAddress} | Where-Object {$_ -match '^26\.'})
         if(-not $radminAddresses.Count){throw 'Radmin VPN bagdastiricisi etkin degil. Iki bilgisayar da ayni Radmin agina baglanmali.'}
         if($radminAddresses -notcontains $route.IPAddress){throw 'Radmin IP rotasi Radmin VPN bagdastiricisini kullanmiyor.'}
         $isRadmin=$true
