@@ -16,11 +16,9 @@ Bu depo, 2012 istemcisiyle **yalnız Radmin VPN üzerinden** arkadaşlarla oynam
 
 Kurulum, oyunun LAN bileşenleri için taşınabilir Python'u indirir; Direct3D uyumluluk dosyaları yama ZIP'inde hazır gelir. Katılımcı bilgisayara Python veya Java kurmak gerekmez. Sunucu kurulurken JDK 17, PHP ve MariaDB oyun klasörünün içindeki `.runtime` dizinine indirilir; sistem PATH'ine eklenmez. Sunucu bilgisayarında envanter yöneticisi için Python/Tk ve Pillow da aynı şekilde yerel klasöre hazırlanır. Envanter yöneticisi başka bir bilgisayarda ilk kez açılırsa gerekli bileşenleri kendi `.runtime` klasörüne indirir. İlk kurulum internet bağlantısı gerektirir. Oyunu başlatırken yerel ağ kuralları için Windows yönetici izni istenir.
 
-Tüm oyuncular Radmin VPN'i açıp aynı Radmin ağına katılsın. Aynı evdeki oyuncular da Radmin kullanır. Sunucu sahibi `WolfteamBaslat.bat` içinde **1** seçer. Sunucu hazır olduğunda oyun klasöründe **RadminKatil.bat** oluşur. Kurucu bu küçük dosyayı arkadaşlarına gönderir; arkadaşları dosyayı `WolfteamBaslat.bat` ile aynı oyun klasörüne koyup çift tıklar. Başlatıcı adres sormadan doğrudan bu sunucuya bağlanır. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
+Tüm oyuncular Radmin VPN'i açıp aynı Radmin ağına katılsın. Aynı evdeki oyuncular da Radmin kullanır. Herkes **WolfteamBaslat.bat** dosyasını açar. Sunucu sahibi **1** seçer; arkadaşları **2** seçip açık sunucuyu listeden seçer. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
 
-Bu dosya ilk açılışta sunucuyu bilgisayara kaydeder. Sonraki açılışlarda `WolfteamBaslat.bat` içindeki **2** seçeneği kayıtlı sunucuyu listede gösterir. Otomatik Radmin keşfi de çalışır; yayın paketlerini geçirmeyen bağlantılarda katılma dosyasını kullanın. Fiziksel Wi-Fi/Ethernet ağı taranmaz. Sunucunun Radmin adresi değişirse kurucunun yeniden ürettiği katılma dosyasını alın.
-
-`RadminKatil.bat` ve `RadminSunucu.json` bilgisayara özel üretilir, Git'e eklenmez ve public depoda bulunmaz.
+Başlatıcı Windows'un Radmin kartında bilinen eşleri doğrudan sorgular ve WolfTeam sunucu protokolünü doğrular. Broadcast yanıtları da keşfe yardımcı olur. IP adresi yazmanız veya bağlantı dosyası paylaşmanız gerekmez. Fiziksel Wi-Fi/Ethernet ağı taranmaz.
 
 Başlatıcı, oyunun güncelleme adresini her oturumda seçilen LAN/Radmin sunucusuna yönlendirir ve oyun kapandıktan sonra dosyanın önceki içeriğini geri yükler. Arkadaş bilgisayarında `127.0.0.1` kendi bilgisayarını gösterdiğinden bu yönlendirme güncelleme denetiminin sunucuya ulaşmasını sağlar.
 

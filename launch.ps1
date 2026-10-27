@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 . (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
 . (Join-Path $PSScriptRoot 'server/radmin_support.ps1')
-Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.6'
+Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.7'
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -146,6 +146,53 @@ function ConvertFrom-LanDiscoveryOutput([string[]]$Lines) {
         [pscustomobject]@{ip=$address.ToString();name=$serverName;channels=$channels;port=$port}
     }
 }
+function Select-RadminServer {
+    while($true){
+        [void](Get-LanAddress)
+        Write-Host 'Radmin sunuculari araniyor...'
+        $foundLines=@(& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --launcher)
+        if($LASTEXITCODE -ne 0){throw 'LAN taramasi tamamlanamadi. Yamanin launch.ps1 dosyasini ve server klasorunu birlikte guncelleyin; yukaridaki hata ayrintisini kurucuya iletin.'}
+        $servers=@(ConvertFrom-LanDiscoveryOutput -Lines $foundLines)
+        $scanSummary=@($foundLines | Where-Object {([string]$_).StartsWith("WTRADMIN1`t")})
+        if($foundLines.Count -and -not $servers.Count -and -not $scanSummary.Count){
+            $responseFile=Join-Path $PSScriptRoot '.runtime/lan-discovery-last.txt'
+            $foundLines | Set-Content -LiteralPath $responseFile -Encoding UTF8
+            throw "Sunucu yaniti okunamadi. Yama dosyalarini birlikte guncelleyin. Kayit: $responseFile"
+        }
+        if($servers.Count){
+            for($i=0;$i -lt $servers.Count;$i++){
+                Write-Host (" [{0}] {1} - {2} kanal ({3})" -f ($i+1),$servers[$i].name,$servers[$i].channels,$servers[$i].ip)
+            }
+            $pick=Read-Host 'Katilmak icin numara (R yeniden tara, Q cik)'
+            if($pick -match '^[Qq]$'){exit 0}
+            if($pick -match '^[Rr]$'){continue}
+            if($pick -notmatch '^\d+$' -or [int]$pick -lt 1 -or [int]$pick -gt $servers.Count){
+                Write-Host 'Listeden gecerli bir sunucu numarasi sec.' -ForegroundColor Yellow
+                continue
+            }
+            $selectedServer=$servers[[int]$pick-1]
+            $selectedIP=$null
+            if(-not [Net.IPAddress]::TryParse([string]$selectedServer.ip,[ref]$selectedIP) -or
+                $selectedIP.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork){
+                Write-Host 'Secilen sunucunun IPv4 adresi gecersiz. R ile yeniden tara.' -ForegroundColor Yellow
+                continue
+            }
+            return $selectedIP.ToString()
+        }
+        if($scanSummary.Count){
+            $scanFields=([string]$scanSummary[0]).Split(@([char]9))
+            if($scanFields.Count -eq 4){
+                Write-Host ("Radmin karti: {0} | Kontrol edilen adres: {1} | Yanit veren oyun portu: {2}" -f $scanFields[1],$scanFields[2],$scanFields[3]) -ForegroundColor Yellow
+                if($scanFields[3] -ne '0'){
+                    Write-Host 'Oyun portu acik fakat sunucu kimligi dogrulanamadi. Kurucu da 2026.10.27.7 surumunu kullanip sunucuyu yeniden acmali.' -ForegroundColor Yellow
+                }
+            }
+        }
+        Write-Host 'Acik WolfTeam sunucusu bulunamadi. Kurucu 1 ile sunucuyu acsin; iki bilgisayar da ayni Radmin aginda olmali.' -ForegroundColor Yellow
+        $retry=Read-Host '[R] Yeniden tara  [Q] Cik'
+        if($retry -match '^[Qq]$'){exit 0}
+    }
+}
 $menuHost=$false
 if(-not $Mode){
     Write-Host ''
@@ -160,42 +207,6 @@ if(-not $Mode){
         $ServerIP=$BindIP
     }elseif($choice -eq '2'){
         $Mode='Join'
-        while($true){
-            [void](Get-LanAddress)
-            Write-Host 'Radmin sunuculari araniyor...'
-            $foundLines=@(& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --launcher)
-            if($LASTEXITCODE -ne 0){throw 'LAN taramasi tamamlanamadi. Yamanin launch.ps1 dosyasini ve server klasorunu birlikte guncelleyin; yukaridaki hata ayrintisini kurucuya iletin.'}
-            $servers=@(ConvertFrom-LanDiscoveryOutput -Lines $foundLines)
-            if($foundLines.Count -and -not $servers.Count){
-                $responseFile=Join-Path $PSScriptRoot '.runtime/lan-discovery-last.txt'
-                $foundLines | Set-Content -LiteralPath $responseFile -Encoding UTF8
-                throw "Sunucu yaniti okunamadi. Yama dosyalarini birlikte guncelleyin. Kayit: $responseFile"
-            }
-            if($servers.Count){
-                for($i=0;$i -lt $servers.Count;$i++){
-                    Write-Host (" [{0}] {1} - {2} kanal ({3})" -f ($i+1),$servers[$i].name,$servers[$i].channels,$servers[$i].ip)
-                }
-                $pick=Read-Host 'Katilmak icin numara (R yeniden tara, Q cik)'
-                if($pick -match '^[Qq]$'){exit 0}
-                if($pick -match '^[Rr]$'){continue}
-                if($pick -notmatch '^\d+$' -or [int]$pick -lt 1 -or [int]$pick -gt $servers.Count){
-                    Write-Host 'Listeden gecerli bir sunucu numarasi sec.' -ForegroundColor Yellow
-                    continue
-                }
-                $selectedServer=$servers[[int]$pick-1]
-                $selectedIP=$null
-                if(-not [Net.IPAddress]::TryParse([string]$selectedServer.ip,[ref]$selectedIP) -or
-                    $selectedIP.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork){
-                    Write-Host 'Secilen sunucunun IPv4 adresi gecersiz. R ile yeniden tara.' -ForegroundColor Yellow
-                    continue
-                }
-                $ServerIP=$selectedIP.ToString()
-                break
-            }
-            Write-Host 'Sunucu bulunamadi. Kurucunun RadminKatil.bat dosyasini oyun klasorune koyup acin; bu dosya adres yazmadan dogrudan baglanir.' -ForegroundColor Yellow
-            $retry=Read-Host '[R] Yeniden tara  [Q] Cik'
-            if($retry -match '^[Qq]$'){exit 0}
-        }
     }else{throw 'Gecersiz secim.'}
 }
 if($Mode -in 'Host','Server' -and $BindIP -eq '127.0.0.1'){
@@ -203,12 +214,12 @@ if($Mode -in 'Host','Server' -and $BindIP -eq '127.0.0.1'){
     if($address){$BindIP=$address.IPAddress;$ServerIP=$BindIP}
 }
 
-# Ask for all choices before UAC so the elevated copy never opens a hidden
-# prompt. Reuse the PowerShell edition that launched this script (pwsh or PS5).
+# Select the account and role before UAC. The visible elevated copy prepares
+# Radmin rules before probing peers and presenting the server list.
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $CheckOnly -and -not ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     $currentShell=(Get-Process -Id $PID).Path
-    $forward=@('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+$PSCommandPath+'"'),
+    $forward=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,
                '-Mode',$Mode,'-ServerIP',$ServerIP,'-BindIP',$BindIP,'-Nick',$Nick)
     if($CheckOnly){$forward+='-CheckOnly'}
     $argumentLine=($forward | ForEach-Object { if($_ -match '[\s"]'){ '"'+($_ -replace '"','\"')+'"' } else { $_ } }) -join ' '
@@ -221,6 +232,20 @@ if (-not $CheckOnly -and -not ([Security.Principal.WindowsPrincipal]$identity).I
         throw "Yonetici baslatma istegi acilamadi veya UAC reddedildi: $($_.Exception.Message)"
     }
     exit 0
+}
+
+# Prepare the selected Radmin policy before discovery. An older physical-LAN
+# policy may otherwise block the portable Python probes before a host is chosen.
+if($Mode -eq 'Join' -and $ServerIP -eq '127.0.0.1'){
+    if($CheckOnly){throw 'Radmin sunucusu secilmemis.'}
+    [void](Get-LanAddress)
+    $discoveryPolicyFile=Join-Path $PSScriptRoot 'network-policy.json'
+    $discoveryPolicy=if(Test-Path -LiteralPath $discoveryPolicyFile){Get-Content -LiteralPath $discoveryPolicyFile -Raw | ConvertFrom-Json}else{$null}
+    if(-not $discoveryPolicy -or $discoveryPolicy.Subnet -ne '26.0.0.0/8' -or -not [bool]$discoveryPolicy.Radmin){
+        Write-Host 'Radmin baglanti kurallari hazirlaniyor...'
+        & (Join-Path $PSScriptRoot 'configure_network.ps1') -LanSubnet '26.0.0.0/8' -Radmin
+    }
+    $ServerIP=Select-RadminServer
 }
 
 # Close only this project's prior client. A different WolfTeam installation is
@@ -382,8 +407,6 @@ try{
         if(-not $ready){throw "Sunucu hazir olmadi: $run"}
         $ServerIP=$BindIP
         Write-Host "Sunucu: $ServerIP | Oyuncu: $Nick | Radmin sunucusu hazir"
-        $joinFile=New-RadminJoinFile -Root $PSScriptRoot -ServerIP $ServerIP
-        Write-Host "Arkadasina gonder: $joinFile"
     }
     @{ServerPID=if($ownedServer){$ownedServer.Id}else{$null};ServerIP=$ServerIP;Mode=$Mode;Engine='logan-java';Started=$started.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'session.json')
     if($Mode -eq 'Server'){$ownedServer.WaitForExit();return}

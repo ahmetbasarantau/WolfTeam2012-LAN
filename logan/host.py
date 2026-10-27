@@ -142,6 +142,18 @@ class UpdateHandler(http.server.BaseHTTPRequestHandler):
 
     def _serve_update(self, include_body):
         path = self.path.split('?', 1)[0]
+        if path == '/wolfteam/discovery':
+            payload = json.dumps({'protocol': 'wolfteam-radmin-v1',
+                                  'ip': self.server.server_address[0], 'port': 40706,
+                                  'name': 'WolfTeam Radmin Sunucusu', 'channels': 1}).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(payload)))
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            if include_body:
+                self.wfile.write(payload)
+            return
         if path not in ('/update.u', '/apex/wolfteam/psserver/web/update.u'):
             self.send_error(404)
             print(f'[UPDATE] {self.command} {path} -> 404', flush=True)
@@ -308,6 +320,7 @@ def main():
         for sock in discovery_sockets:
             sock.close()
         for server in servers:
+            server.shutdown()
             server.server_close()
         for child in reversed(children):
             if child.poll() is None:
