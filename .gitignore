@@ -25,7 +25,6 @@ credentials.json
 network-policy.json
 network-policy.json.tmp
 Profiles/
-local_panel/
 
 # Original client/game data and local installation files
 *.xfs
@@ -35,7 +34,6 @@ local_panel/
 *.dll
 *.exe
 *.netmodule
-*.bin
 *.flt
 *.asi
 *.xoe
@@ -45,6 +43,7 @@ local_panel/
 *.png
 *.jpg
 *.bak
+*.bin
 
 # Generated local catalog files and previews
 /logan/web/wolfteam/asset_catalog.json
@@ -52,5 +51,5 @@ local_panel/
 /logan/web/wolfteam/tattoo_textures.json
 /logan/web/wolfteam/previews/
 
-
-
+# Local-only panel
+/local_panel/

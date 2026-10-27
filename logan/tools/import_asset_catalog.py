@@ -3,9 +3,14 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import sys
 import struct
 import zlib
 
+# Python's embeddable Windows distribution runs in isolated mode. In that
+# configuration the script's folder is not always added to sys.path, so load
+# the sibling XFS helper explicitly instead of relying on the caller's cwd.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from import_client_bundles import extract_set_table
 
 

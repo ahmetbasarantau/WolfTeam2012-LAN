@@ -9,21 +9,36 @@ param(
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
-$systemPython=Get-Command python.exe -ErrorAction SilentlyContinue
-$earlyPolicyFile=Join-Path $PSScriptRoot 'network-policy.json'
-$earlyPolicy=if(Test-Path -LiteralPath $earlyPolicyFile){Get-Content -LiteralPath $earlyPolicyFile -Raw | ConvertFrom-Json}else{$null}
-if(Test-Path -LiteralPath $runtimePython){
+$systemPython=$null
+$python=$null
+function Test-UsablePython([string]$Executable){
+    if(-not $Executable -or -not (Test-Path -LiteralPath $Executable -PathType Leaf)){return $false}
+    try{
+        $ErrorActionPreference='SilentlyContinue'
+        & $Executable -c 'import asyncio, ipaddress, json, socket' 2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    }catch{return $false}
+}
+if(Test-UsablePython $runtimePython){
     $python=$runtimePython
     $env:PYTHONHOME=Split-Path $runtimePython
     $env:PYTHONPATH=Join-Path $PSScriptRoot 'server'
-}elseif($systemPython){$python=$systemPython.Source}
-elseif((Test-Path -LiteralPath (Join-Path $PSScriptRoot '.runtime/python.exe')) -and $earlyPolicy){
+}
+$pythonCommand=Get-Command python.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if($pythonCommand -and (Test-UsablePython $pythonCommand.Source)){
+    $systemPython=$pythonCommand.Source
+    if(-not $python){$python=$systemPython}
+}
+$earlyPolicyFile=Join-Path $PSScriptRoot 'network-policy.json'
+$earlyPolicy=if(Test-Path -LiteralPath $earlyPolicyFile){Get-Content -LiteralPath $earlyPolicyFile -Raw | ConvertFrom-Json}else{$null}
+if(-not $python -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.runtime/python.exe')) -and $earlyPolicy){
     # Backward compatibility with older local installs; release packages ship
     # their own relocatable Python runtime above.
     $python=Join-Path $PSScriptRoot '.runtime/python.exe'
     $env:PYTHONHOME=$earlyPolicy.PythonHome
     $env:PYTHONPATH=Join-Path $PSScriptRoot 'server'
-}else{throw 'Python çalışma zamanı bulunamadi. Bu dagitim paketindeki dosyalari koruyun.'}
+}
+if(-not $python){throw 'Python calisma zamani hazir degil. Once Kurulum.bat dosyasini calistirin.'}
 $savedNickFile=Join-Path $PSScriptRoot '.runtime/player-name.txt'
 $accountCacheFile=Join-Path $PSScriptRoot '.runtime/player-accounts.json'
 function Get-LocalProfileNames {
@@ -38,7 +53,7 @@ function Get-LocalProfileNames {
             New-Item -ItemType Directory -Path $lookupRun -Force | Out-Null
             Remove-Item -LiteralPath (Join-Path $lookupRun 'stop.request') -Force -ErrorAction SilentlyContinue
             $hostScript=Join-Path $PSScriptRoot 'logan/host.py'
-            $lookupProcess=Start-Process -FilePath $systemPython.Source -ArgumentList @('-u',('"'+$hostScript+'"'),'--services-only','--run',('"'+$lookupRun+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $lookupRun 'stdout.log') -RedirectStandardError (Join-Path $lookupRun 'stderr.log') -PassThru
+            $lookupProcess=Start-Process -FilePath $systemPython -ArgumentList @('-u',('"'+$hostScript+'"'),'--services-only','--run',('"'+$lookupRun+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $lookupRun 'stdout.log') -RedirectStandardError (Join-Path $lookupRun 'stderr.log') -PassThru
             for($attempt=0;$attempt -lt 80;$attempt++){
                 if($lookupProcess.HasExited){break}
                 try { $users=Invoke-RestMethod 'http://127.0.0.1:18080/wolfteam/users.php?req=adminusers' -TimeoutSec 1; break } catch {}
