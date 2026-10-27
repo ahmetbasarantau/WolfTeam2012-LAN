@@ -147,10 +147,26 @@ if(-not $Mode){
         $Mode='Join'
         while($true){
             Write-Host 'Ayni agdaki WolfTeam sunuculari araniyor...'
-            $found=& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --json
+            $foundLines=@(& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --json)
             if($LASTEXITCODE -ne 0){throw 'LAN taramasi basarisiz oldu. Oyuncu adi ve ag baglantisini kontrol et.'}
             $servers=@()
-            if($found){$servers=@($found | ConvertFrom-Json)}
+            $foundJson=[string]::Join([Environment]::NewLine,[string[]]$foundLines)
+            $discovered=@()
+            if(-not [string]::IsNullOrWhiteSpace($foundJson)){
+                try{$discovered=@(ConvertFrom-Json -InputObject $foundJson -ErrorAction Stop)}
+                catch{throw "LAN sunucu listesi okunamadi. R ile yeniden tara. Ayrinti: $($_.Exception.Message)"}
+            }
+            $servers=@(foreach($server in $discovered){
+                $candidate=[string]$server.ip
+                $parsedServerIP=$null
+                if([Net.IPAddress]::TryParse($candidate,[ref]$parsedServerIP) -and
+                    $parsedServerIP.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork){
+                    $serverName=[string]$server.name
+                    if([string]::IsNullOrWhiteSpace($serverName)){$serverName='WolfTeam LAN sunucusu'}
+                    $channelCount=if($null -ne $server.channels){[string]$server.channels}else{'?'}
+                    [pscustomobject]@{ip=$parsedServerIP.ToString();name=$serverName;channels=$channelCount;port=$server.port}
+                }
+            })
             if($servers.Count){
                 for($i=0;$i -lt $servers.Count;$i++){
                     Write-Host (" [{0}] {1} - {2} kanal ({3})" -f ($i+1),$servers[$i].name,$servers[$i].channels,$servers[$i].ip)
@@ -162,10 +178,18 @@ if(-not $Mode){
                     Write-Host 'Listeden gecerli bir sunucu numarasi sec.' -ForegroundColor Yellow
                     continue
                 }
-                $ServerIP=$servers[[int]$pick-1].ip
+                $selectedServer=$servers[[int]$pick-1]
+                $selectedIP=$null
+                if(-not [Net.IPAddress]::TryParse([string]$selectedServer.ip,[ref]$selectedIP) -or
+                    $selectedIP.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork){
+                    Write-Host 'Secilen sunucunun IPv4 adresi gecersiz. R ile yeniden tara.' -ForegroundColor Yellow
+                    continue
+                }
+                $ServerIP=$selectedIP.ToString()
                 break
             }
-            Write-Host 'Sunucu bulunamadi. Kurucu sunucuyu baslatsin; sonra R ile yeniden tara.' -ForegroundColor Yellow
+            if($discovered.Count){Write-Host 'Sunucu bulundu ancak gecerli IPv4 adresi gelmedi. Radmin baglantisini kontrol edip yeniden tara.' -ForegroundColor Yellow}
+            else{Write-Host 'Sunucu bulunamadi. Kurucu sunucuyu baslatsin; sonra R ile yeniden tara.' -ForegroundColor Yellow}
             $retry=Read-Host '[R] Yeniden tara  [Q] Cik'
             if($retry -match '^[Qq]$'){exit 0}
         }
@@ -274,7 +298,10 @@ if($Mode -in 'Host','Server'){
     if($stale -and -not $CheckOnly){& (Join-Path $PSScriptRoot 'logan/build.ps1')}
 }
 $targetAddress=if($Mode -eq 'Join'){$ServerIP}else{$BindIP}
-$parsed=[Net.IPAddress]::Parse($targetAddress)
+$parsed=$null
+if(-not [Net.IPAddress]::TryParse([string]$targetAddress,[ref]$parsed)){
+    throw "Sunucu IPv4 adresi alinamadi veya gecersiz: '$targetAddress'. Sunucu listesinde adres gorunmuyorsa R ile yeniden tara."
+}
 if($parsed.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork){throw 'IPv4 gerekli.'}
 $isRadmin=$false
 if([Net.IPAddress]::IsLoopback($parsed)){$subnet='127.0.0.0/8'}else{
