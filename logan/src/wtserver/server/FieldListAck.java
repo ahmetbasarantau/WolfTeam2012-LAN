@@ -24,7 +24,8 @@ public class FieldListAck extends ServerMsg {
     {
         size = 8;
         buffer = ByteBuffer.allocate(8192);
-        this.rooms = rooms;
+        // Freeze membership/count for all recipients of this list update.
+        this.rooms = new ArrayList<GameServer.Room>(rooms);
     }
 
     public byte [] getData(short seqNum)
