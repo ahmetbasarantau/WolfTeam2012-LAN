@@ -48,12 +48,12 @@ function Get-LocalProfileNames {
     try {
         $users=$null
         try { $users=Invoke-RestMethod 'http://127.0.0.1:18080/wolfteam/users.php?req=adminusers' -TimeoutSec 1 } catch {}
-        if(-not $users -and $systemPython -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'logan/host.py'))){
+        if(-not $users -and $python -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'logan/host.py'))){
             $lookupRun=Join-Path $PSScriptRoot ('.runtime/account-lookup-'+$PID)
             New-Item -ItemType Directory -Path $lookupRun -Force | Out-Null
             Remove-Item -LiteralPath (Join-Path $lookupRun 'stop.request') -Force -ErrorAction SilentlyContinue
             $hostScript=Join-Path $PSScriptRoot 'logan/host.py'
-            $lookupProcess=Start-Process -FilePath $systemPython -ArgumentList @('-u',('"'+$hostScript+'"'),'--services-only','--run',('"'+$lookupRun+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $lookupRun 'stdout.log') -RedirectStandardError (Join-Path $lookupRun 'stderr.log') -PassThru
+            $lookupProcess=Start-Process -FilePath $python -ArgumentList @('-u',('"'+$hostScript+'"'),'--services-only','--run',('"'+$lookupRun+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $lookupRun 'stdout.log') -RedirectStandardError (Join-Path $lookupRun 'stderr.log') -PassThru
             for($attempt=0;$attempt -lt 80;$attempt++){
                 if($lookupProcess.HasExited){break}
                 try { $users=Invoke-RestMethod 'http://127.0.0.1:18080/wolfteam/users.php?req=adminusers' -TimeoutSec 1; break } catch {}

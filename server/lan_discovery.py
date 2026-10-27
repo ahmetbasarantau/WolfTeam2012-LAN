@@ -27,8 +27,6 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from broker_codec import BrokerCodec
-
 DEFAULT_PORT = 40706
 DISCOVERY_PORT = 40705
 DISCOVERY_REQUEST = b'WOLFTEAM_2012_LAN_DISCOVER_V1'
@@ -143,6 +141,10 @@ def query_server_details(ip_str, port=DEFAULT_PORT, timeout=1.0):
     """Connect via BrokerCodec and query WorldInfo (0x1106) for channel names."""
     sock = None
     try:
+        # Discovery itself uses only UDP/TCP sockets. Broker metadata is
+        # optional, so join-only installs do not need PyCryptodome.
+        from broker_codec import BrokerCodec
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
         sock.connect((ip_str, port))

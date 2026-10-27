@@ -5,6 +5,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5 may otherwise negotiate an obsolete TLS version.
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
+if (-not [Environment]::Is64BitOperatingSystem) {
+    throw 'WolfTeam LAN kurulumu icin 64 bit Windows gereklidir.'
+}
 $root = $PSScriptRoot
 if ($PythonOnly) { $Role = 'Join' }
 $runtimePath = Join-Path $root '.runtime'
@@ -35,7 +40,13 @@ if (-not (Test-PythonRuntime $pythonExe)) {
     $archive = Join-Path $downloadsPath 'python-3.14.10-embed-amd64.zip'
     $url = 'https://www.python.org/ftp/python/3.14.10/python-3.14.10-embed-amd64.zip'
     $expectedHash = '90905E64A840557D8C1BC4F5B74DB3D7EE85E3FFB217611CAC1C7813ACEA4159'
-    if (-not (Test-Path -LiteralPath $archive)) { Invoke-WebRequest -Uri $url -OutFile $archive }
+    if (-not (Test-Path -LiteralPath $archive)) {
+        try { Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing -TimeoutSec 300 }
+        catch {
+            Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue
+            throw 'Python indirilemedi. İnternet bağlantısını kontrol edip Kurulum.bat dosyasını yeniden çalıştırın.'
+        }
+    }
     if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $expectedHash) {
         Remove-Item -LiteralPath $archive -Force
         throw 'Python indirmesi dogrulanamadi. Kurulum dosyasini yeniden calistirin.'
@@ -50,26 +61,25 @@ $env:PYTHONHOME = $pythonPath
 $env:PYTHONPATH = Join-Path $root 'server'
 Write-Host 'Oyun calisma ortami hazir.' -ForegroundColor Green
 
-Write-Host 'Direct3D uyumluluk dosyalari derleniyor...' -ForegroundColor Cyan
-$framework = Join-Path $env:WINDIR 'Microsoft.NET/Framework/v4.0.30319'
-if (-not (Test-Path -LiteralPath (Join-Path $framework 'csc.exe')) -or
-    -not (Test-Path -LiteralPath (Join-Path $framework 'ilasm.exe'))) {
-    throw 'Bu Windows kurulumunda Direct3D uyumluluk araclari eksik. Windows ozelliklerinden .NET Framework 4.x etkinlestirin.'
+$compatibilityModule = Join-Path $root 'D3DHookFull.netmodule'
+$compatibilityDll = Join-Path $root 'd3d9.dll'
+if ((Test-Path -LiteralPath $compatibilityModule -PathType Leaf) -and
+    (Test-Path -LiteralPath $compatibilityDll -PathType Leaf)) {
+    Write-Host 'Direct3D uyumluluk dosyalari pakette hazir.' -ForegroundColor Green
+} else {
+    Write-Host 'Direct3D uyumluluk dosyalari derleniyor...' -ForegroundColor Cyan
+    $compatibilityBuild = Join-Path $root 'compatibility/build.ps1'
+    if (-not (Test-Path -LiteralPath $compatibilityBuild -PathType Leaf)) {
+        throw 'Uyumluluk dosyalari pakette veya kaynak klasorunde bulunamadi.'
+    }
+    & $compatibilityBuild -Install
+    if ($LASTEXITCODE) { throw 'Direct3D uyumluluk dosyalari hazirlanamadi.' }
 }
-$compatibilityBuild = Join-Path $root 'compatibility/build.ps1'
-if (-not (Test-Path -LiteralPath $compatibilityBuild -PathType Leaf)) {
-    throw 'Uyumluluk kaynaklari bulunamadi. Tam oyun/yama paketini kullanin.'
-}
-& $compatibilityBuild -Install
-if ($LASTEXITCODE) { throw 'Direct3D uyumluluk dosyalari kurulamadi.' }
 
 if ($Role -eq 'Host') {
-    $bundledCompiler = Join-Path $runtimePath 'logan/java/bin/javac.exe'
-    $systemCompiler = Get-Command javac.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-    $systemJava = Get-Command java.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not (Test-Path -LiteralPath $bundledCompiler) -and (-not $systemCompiler -or -not $systemJava)) {
-        throw 'Bu bilgisayar sunucu olacak. Sunucu bilgisayarina Java JDK 17 veya yenisi kurup Kurulum.bat dosyasini yeniden calistirin. Katilacak bilgisayarda bu secenek kullanilmaz.'
-    }
+    Write-Host 'Sunucu ve envanter araci icin tasinabilir bilesenler hazirlaniyor...' -ForegroundColor Cyan
+    & (Join-Path $root 'inventory_setup.ps1')
+    if ($LASTEXITCODE) { throw 'Tasinabilir envanter araci kurulumu tamamlanamadi.' }
     Write-Host 'Oyunun esya ve set listeleri hazirlaniyor...' -ForegroundColor Cyan
     $catalogTool = Join-Path $root 'logan/tools/import_asset_catalog.py'
     $bundleTool = Join-Path $root 'logan/tools/import_client_bundles.py'

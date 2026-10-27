@@ -32,8 +32,10 @@ Profiles/
 *.sys
 *.sy_
 *.dll
+!d3d9.dll
 *.exe
 *.netmodule
+!D3DHookFull.netmodule
 *.flt
 *.asi
 *.xoe

@@ -14,7 +14,7 @@ Bu depo, 2012 istemcisiyle ev ağı veya Radmin VPN üzerinden arkadaşlarla oyn
 4. Sunucuyu kuracak bilgisayarda **1**; yalnızca arkadaşının sunucusuna bağlanacak bilgisayarda **2** seçin.
 5. Kurulum bittiğinde **Y** tuşuna basarsanız oyun doğrudan açılır. Sonradan başlatmak için `WolfteamBaslat.bat` dosyasına çift tıklayın.
 
-Kurulum taşınabilir Python'u indirir ve Direct3D uyumluluk dosyalarını hazırlar. Katılımcı bilgisayara Python veya Java kurmak gerekmez. Sunucuyu kuracak bilgisayarda ilk kurulum için Java JDK 17 veya yenisi gerekir; sunucu, PHP ve MariaDB bileşenlerini kurulum kendisi indirir. İlk kurulum internet bağlantısı gerektirir. Oyunu başlatırken yerel ağ kuralları için Windows yönetici izni istenir.
+Kurulum, oyunun LAN bileşenleri için taşınabilir Python'u indirir; Direct3D uyumluluk dosyaları yama ZIP'inde hazır gelir. Katılımcı bilgisayara Python veya Java kurmak gerekmez. Sunucu kurulurken JDK 17, PHP ve MariaDB oyun klasörünün içindeki `.runtime` dizinine indirilir; sistem PATH'ine eklenmez. Sunucu bilgisayarında envanter yöneticisi için Python/Tk ve Pillow da aynı şekilde yerel klasöre hazırlanır. Envanter yöneticisi başka bir bilgisayarda ilk kez açılırsa gerekli bileşenleri kendi `.runtime` klasörüne indirir. İlk kurulum internet bağlantısı gerektirir. Oyunu başlatırken yerel ağ kuralları için Windows yönetici izni istenir.
 
 Ev ağındaki bilgisayarlar aynı ağa bağlansın. Farklı ağlardaki oyuncular aynı Radmin VPN ağına katılsın. Sunucu sahibi `WolfteamBaslat.bat` içinde **1** seçer; arkadaşları **2** seçip listeden sunucuyu seçer. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
 
@@ -22,7 +22,7 @@ Hata olursa kurulum penceresini kapatmadan son ekrandaki mesajın fotoğrafını
 
 ## Envanter yöneticisi
 
-`envanter_yoneticisi.bat`, sunucu bilgisayarındaki hesaplara eşya eklemek için isteğe bağlı araçtır. Kullanmak için Python 3 ve Tkinter gerekir; paketleri `python -m pip install -r requirements-inventory.txt` komutuyla kurun. Envanter yöneticisi arkadaşlara dağıtılacak kurulum için gerekli değildir.
+`envanter_yoneticisi.bat`, sunucu bilgisayarındaki hesaplara eşya eklemek için isteğe bağlı araçtır. Sunucu kurulumunda gerekli Python/Tk/Pillow bileşenleri oyun klasörünün `.runtime` dizinine hazırlanır; sisteme Python veya paket kurmanız gerekmez. Paneli sunucu bilgisayarında, sunucu kurulumunu tamamladıktan sonra açın.
 
 ## Güncelleme ve içerik
 
