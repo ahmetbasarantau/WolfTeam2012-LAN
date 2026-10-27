@@ -47,6 +47,11 @@ Profiles/
 *.bak
 *.bin
 
+# Include only the working offline updater modules, never local client logs/config.
+/avital/*
+!/avital/webd.xoe
+!/avital/showerrorinfo.xoe
+
 # Generated local catalog files and previews
 /logan/web/wolfteam/asset_catalog.json
 /logan/web/wolfteam/client_bundles.json
