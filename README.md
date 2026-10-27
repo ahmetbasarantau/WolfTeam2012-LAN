@@ -4,7 +4,7 @@ Bu depo, 2012 istemcisiyle ev ağı veya Radmin VPN üzerinden LAN oyunu kurmaya
 
 ## Oyun dosyalarını edinme
 
-Bu depoda WolfTeam istemcisi, haritalar, sesler veya XFS arşivleri bulunmaz. Eski WolfTeam Türkiye dosyaları için [Archive.org arşiv sayfasını açın](https://archive.org/details/wolfteamturkiye). Sayfada listelenen dosyalardan birini indirip arşivdeki yönergeye göre çıkarın. Kurulum klasöründe en az `Wolfteam.exe`, `wolf.xfs` ve `sound.xfs` bulunmalı. Arşivdeki istemci sürümünün 2012 Softnyx istemcisiyle uyumlu olduğunu kontrol edin.
+Bu depoda WolfTeam istemcisi, haritalar, sesler veya XFS arşivleri bulunmaz. Eski WolfTeam Türkiye dosyaları için [Archive.org arşiv sayfasını açın](https://archive.org/details/wolfteamturkiye). Sayfada listelenen dosyalardan birini indirip arşivdeki yönergeye göre çıkarın. Kurulum klasöründe en az `Wolfteam.exe`, `wolf.xfs` ve `sound.xfs` bulunmalı. Bu arşivden indirdiğiniz dosyaları çıkarıp aşağıdaki adımlarla yamayı kurun.
 
 ## Adım adım kurulum
 
@@ -69,3 +69,4 @@ Bu depo yama **kaynak kodudur**, hazır oyun paketi değildir. Son kaynak GitHub
 ## Lisanslar
 
 Proje kaynakları MIT lisanslıdır. Logan sunucu kodunun özgün MIT lisansı `logan/LICENSE` dosyasındadır. WolfTeam ve Softnyx ilgili hak sahiplerinin markalarıdır; proje bağımsız topluluk çalışmasıdır.
+
