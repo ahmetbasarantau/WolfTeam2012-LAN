@@ -17,8 +17,8 @@ Git kullanıyorsanız güncel yamayı almak için yama klasöründe `git pull` �
 ### 2. Gerekli araçları kurun
 
 - Windows PowerShell 5 veya PowerShell 7
-- Python 3 ve Tkinter
-- Java JDK 17 veya daha yenisi
+- Envanter yöneticisi için Python 3, Tkinter ve `requirements-inventory.txt` paketleri
+- Sunucu bilgisayarı için Java JDK 17 veya daha yenisi
 - Direct3D yaması için Windows .NET Framework derleyicileri (`csc.exe` ve `ilasm.exe`)
 
 Envanter yöneticisinin Python paketini kurun:
@@ -27,21 +27,13 @@ Envanter yöneticisinin Python paketini kurun:
 python -m pip install -r requirements-inventory.txt
 ```
 
-### 3. Yerel sunucuyu hazırlayın
+### 3. Kurulumu çalıştırın
 
-Oyun klasöründe PowerShell açın ve çalıştırın:
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\logan\setup.ps1
-.\compatibility\build.ps1 -Install
-```
-
-Kurulum, PHP ve MariaDB çalışma zamanlarını `.runtime` altına indirir, Java sunucusunu derler ve Direct3D uyumluluk yamasını oyun klasörüne kurar.
+Oyun klasöründeki `Kurulum.bat` dosyasına çift tıklayın. Sunucu olacak bilgisayarda **1**, yalnızca katılacak bilgisayarda **2** seçin. Betik taşınabilir Python'ı indirip doğrular ve Direct3D uyumluluk bileşenlerini kurar. `wolf.xfs` varsa yerel eşya kataloglarını da oluşturur. Sunucu seçeneği PHP ve MariaDB çalışma zamanlarını indirir, Java sunucusunu derler; bu bilgisayarda JDK 17 veya yenisi kurulu olmalıdır.
 
 ### 4. Yerel eşya kataloğunu oluşturun
 
-Envanter yöneticisi ve set içerikleri, oyunun kendi `wolf.xfs` dosyasından yerel katalog üretir. Aynı PowerShell penceresinde:
+Kurulum sırasında `wolf.xfs` yoksa, oyun dosyalarını aldıktan sonra katalogları PowerShell'de oluşturun:
 
 ```powershell
 python .\logan\tools\import_asset_catalog.py .\wolf.xfs .\logan\web\wolfteam\asset_catalog.json
@@ -52,7 +44,7 @@ Kataloglar ve önizleme dosyaları yerelde oluşturulur; GitHub’a gönderilmez
 
 ### 5. Oyunu başlatın
 
-`WolfteamBaslat.bat` dosyasını çalıştırın. Sunucuyu açacak bilgisayarda **1**, arkadaşınızın bilgisayarında **2** seçin. İki bilgisayar aynı Radmin VPN ağına veya aynı ev ağına bağlı olmalı. İlk çalıştırmada Windows Güvenlik Duvarı izni istenebilir.
+`WolfteamBaslat.bat` dosyasını çalıştırın. Sunucuyu açacak bilgisayarda **1**, arkadaşınızın bilgisayarında **2** seçin. Aynı ev/ofis ağındaysanız Radmin gerekmez; farklı ağlardaysanız iki bilgisayarı aynı Radmin VPN ağına bağlayın. İlk çalıştırmada Windows Güvenlik Duvarı izni istenebilir.
 
 Yerel hesaplar, envanter ve oyun veritabanı sunucu bilgisayarında `.runtime\logan\data` altında tutulur. Bu klasörü paylaşmayın; yedeklemek isterseniz oyun kapalıyken yedekleyin.
 

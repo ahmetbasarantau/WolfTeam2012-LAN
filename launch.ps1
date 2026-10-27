@@ -10,20 +10,25 @@ $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=Get-Command python.exe -ErrorAction SilentlyContinue
+$python=$null
+if(Test-Path -LiteralPath $runtimePython){
+    & $runtimePython -c 'import asyncio, ipaddress, json, socket' *> $null
+    if($LASTEXITCODE -eq 0){$python=$runtimePython;$env:PYTHONHOME=Split-Path $runtimePython;$env:PYTHONPATH=Join-Path $PSScriptRoot 'server'}
+}
+if($systemPython){
+    & $systemPython.Source -c 'import asyncio, ipaddress, json, socket' *> $null
+    if($LASTEXITCODE -eq 0){if(-not $python){$python=$systemPython.Source}}else{$systemPython=$null}
+}
 $earlyPolicyFile=Join-Path $PSScriptRoot 'network-policy.json'
 $earlyPolicy=if(Test-Path -LiteralPath $earlyPolicyFile){Get-Content -LiteralPath $earlyPolicyFile -Raw | ConvertFrom-Json}else{$null}
-if(Test-Path -LiteralPath $runtimePython){
-    $python=$runtimePython
-    $env:PYTHONHOME=Split-Path $runtimePython
-    $env:PYTHONPATH=Join-Path $PSScriptRoot 'server'
-}elseif($systemPython){$python=$systemPython.Source}
-elseif((Test-Path -LiteralPath (Join-Path $PSScriptRoot '.runtime/python.exe')) -and $earlyPolicy){
+if(-not $python -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.runtime/python.exe')) -and $earlyPolicy){
     # Backward compatibility with older local installs; release packages ship
     # their own relocatable Python runtime above.
     $python=Join-Path $PSScriptRoot '.runtime/python.exe'
     $env:PYTHONHOME=$earlyPolicy.PythonHome
     $env:PYTHONPATH=Join-Path $PSScriptRoot 'server'
-}else{throw 'Python çalışma zamanı bulunamadi. Bu dagitim paketindeki dosyalari koruyun.'}
+}
+if(-not $python){throw 'Python calisma zamani hazir degil. Once Kurulum.bat dosyasini calistirin.'}
 $savedNickFile=Join-Path $PSScriptRoot '.runtime/player-name.txt'
 $accountCacheFile=Join-Path $PSScriptRoot '.runtime/player-accounts.json'
 function Get-LocalProfileNames {

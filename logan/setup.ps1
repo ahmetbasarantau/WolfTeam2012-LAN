@@ -8,7 +8,7 @@ function Get-VerifiedArchive($url, $destination, $expectedHash) {
 }
 if (-not (Test-Path -LiteralPath (Join-Path $runtimePath 'php/php.exe'))) {
     $archive = Join-Path $runtimePath 'downloads/php.zip'
-    Get-VerifiedArchive 'https://downloads.php.net/~windows/releases/php-8.4.27-nts-Win32-vs17-x64.zip' $archive '93BD8A815A52156606FB906D0573437908C61F96E2CC52C03A51E36A41BF5236'
+    Get-VerifiedArchive 'https://downloads.php.net/~windows/releases/php-8.4.27-1-nts-Win32-vs17-x64.zip' $archive '93BD8A815A52156606FB906D0573437908C61F96E2CC52C03A51E36A41BF5236'
     Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $runtimePath 'php') -Force
 }
 if (-not (Test-Path -LiteralPath (Join-Path $runtimePath 'mariadb/mariadb-11.4.8-winx64/bin/mariadbd.exe'))) {
