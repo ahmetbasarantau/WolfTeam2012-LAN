@@ -1,3 +1,17 @@
+function ConvertTo-FirewallAddressArray([string]$Json) {
+    # Windows PowerShell 5.1 may represent a top-level JSON array as a wrapper
+    # object with `value` and `Count`. Unwrap it so firewall cmdlets receive
+    # every address as a plain string argument.
+    $parsed = ConvertFrom-Json -InputObject $Json -ErrorAction Stop
+    $valueProperty = $parsed.PSObject.Properties | Where-Object { $_.Name -ieq 'value' } | Select-Object -First 1
+    if ($valueProperty) { $parsed = $valueProperty.Value }
+    foreach ($address in $parsed) {
+        if ($null -eq $address) { continue }
+        if ($address -is [string]) { $address }
+        else { [string]$address }
+    }
+}
+
 function Test-OfflineFirewallRules($Rules, [string]$Python) {
     $pairs = @()
     # Read each provider table once. Per-rule CIM round trips make every launch

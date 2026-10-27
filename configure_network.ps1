@@ -29,7 +29,7 @@ $policyArgs = @((Join-Path $root 'server/network_policy.py'), $LanSubnet)
 if ($Radmin) { $policyArgs += '--radmin' }
 $deniedJson = & $python @policyArgs
 if ($LASTEXITCODE) { throw 'Invalid LAN subnet' }
-$denied = @($deniedJson | ConvertFrom-Json)
+$denied = @(ConvertTo-FirewallAddressArray -Json ($deniedJson -join [Environment]::NewLine))
 # Windows rejects an explicit IPv6 loopback address in firewall rules. Leave
 # ::1 outside the block complement; explicit LAN allows cover IPv4 only.
 $allowed = @('127.0.0.0/8', $LanSubnet | Select-Object -Unique)

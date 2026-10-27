@@ -8,6 +8,7 @@ param(
 )
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
+. (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -353,7 +354,9 @@ if($Mode -in 'Host','Server'){
     if(-not(Get-NetFirewallRule -Name ($ruleName+'-in') -ErrorAction SilentlyContinue)){
         $firewallArgs=@((Join-Path $PSScriptRoot 'server/network_policy.py'),$subnet)
         if($isRadmin){$firewallArgs+='--radmin'}
-        $denied=@((& $python @firewallArgs) | ConvertFrom-Json)
+        $deniedJson = (& $python @firewallArgs) -join [Environment]::NewLine
+        if ($LASTEXITCODE) { throw 'Firewall address scope generation failed.' }
+        $denied = @(ConvertTo-FirewallAddressArray -Json $deniedJson)
         Get-NetFirewallRule -Group $group -ErrorAction SilentlyContinue | Remove-NetFirewallRule
         foreach($direction in @('Inbound','Outbound')){
             New-NetFirewallRule -Name ($ruleName+'-block-'+$direction) -DisplayName 'WolfTeam LAN dışı bağlantıları engelle' -Group $group -Program $javaExe -Direction $direction -Action Block -RemoteAddress $denied -Profile Any | Out-Null
