@@ -28,8 +28,11 @@ def denied_ranges(subnet, allow_radmin=False):
 
 def _flatten_addresses(obj):
     if isinstance(obj, dict):
-        if 'value' in obj:
-            return _flatten_addresses(obj['value'])
+        # CIM collections can be serialized by different PowerShell versions
+        # as either `value` or `Value` wrappers. Keep the unwrapping case-blind.
+        value_key = next((key for key in obj if str(key).casefold() == 'value'), None)
+        if value_key is not None:
+            return _flatten_addresses(obj[value_key])
         return []
     if isinstance(obj, (list, tuple, set)):
         result = []
@@ -72,7 +75,15 @@ if __name__ == '__main__':
         print(subnet)
     elif sys.argv[1] == '--check-addresses':
         for pair in json.load(sys.stdin):
-            if normalized_ranges(pair['expected']) != normalized_ranges(pair['actual']):
-                raise SystemExit(f"Firewall address scope changed: {pair['name']}")
+            expected = normalized_ranges(pair['expected'])
+            actual = normalized_ranges(pair['actual'])
+            if expected != actual:
+                context = f" ({pair['action']})" if pair.get('action') else ''
+                expected_text = json.dumps(pair['expected'], ensure_ascii=True, separators=(',', ':'))
+                actual_text = json.dumps(pair['actual'], ensure_ascii=True, separators=(',', ':'))
+                raise SystemExit(
+                    f"Firewall address scope changed: {pair['name']}{context}; "
+                    f"expected={expected_text}; actual={actual_text}"
+                )
     else:
         print(json.dumps(denied_ranges(sys.argv[1], allow_radmin='--radmin' in sys.argv[2:])))

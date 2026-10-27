@@ -84,7 +84,15 @@ try {
             $rules += @{Name=$allow.Name;Program=$program;Direction=$direction;Action='Allow';Addresses=$allowed}
         }
     }
-    Test-OfflineFirewallRules $rules $python
+    try { Test-OfflineFirewallRules $rules $python }
+    catch {
+        # Windows Firewall can briefly expose a newly created rule before its
+        # address filters are visible in ActiveStore. Re-read once before
+        # treating a scope mismatch as permanent.
+        Write-Host 'Windows Guvenlik Duvari kapsami tekrar dogrulaniyor...' -ForegroundColor Yellow
+        Start-Sleep -Milliseconds 750
+        Test-OfflineFirewallRules $rules $python
+    }
     $manifest = @($programs | ForEach-Object { @{ Path = $_; SHA256 = (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash } })
     @{ Subnet=$LanSubnet; Radmin=[bool]$Radmin; Group=$generation; Rules=$rules; Programs=$manifest; PythonHome=$pythonHome; Denied=$denied; Created=(Get-Date).ToString('o') } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $root 'network-policy.json.tmp') -Encoding utf8
     Move-Item -LiteralPath (Join-Path $root 'network-policy.json.tmp') -Destination (Join-Path $root 'network-policy.json') -Force

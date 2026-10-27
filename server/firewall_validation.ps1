@@ -25,7 +25,7 @@ function Test-OfflineFirewallRules($Rules, [string]$Python) {
         if (-not $filter -or @($filter.LocalAddress).Count -ne 1 -or $filter.LocalAddress -ne 'Any') {
             throw "Firewall local address scope changed: $($spec.Name)"
         }
-        $pairs += @{name=$spec.Name; expected=@($spec.Addresses); actual=@($filter.RemoteAddress)}
+        $pairs += @{name=$spec.Name; action=$spec.Action; expected=@($spec.Addresses); actual=@($filter.RemoteAddress)}
     }
     ConvertTo-Json -InputObject $pairs -Depth 5 -Compress | & $Python (Join-Path $PSScriptRoot 'network_policy.py') --check-addresses
     if ($LASTEXITCODE) { throw 'Firewall address scope validation failed.' }
