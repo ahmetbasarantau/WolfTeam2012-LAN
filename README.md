@@ -20,6 +20,8 @@ Tüm oyuncular Radmin VPN'i açıp aynı Radmin ağına katılsın. Aynı evdeki
 
 Başlatıcı Windows'un Radmin kartında bilinen eşleri doğrudan sorgular ve WolfTeam sunucu protokolünü doğrular. Broadcast yanıtları da keşfe yardımcı olur. IP adresi yazmanız veya bağlantı dosyası paylaşmanız gerekmez. Fiziksel Wi-Fi/Ethernet ağı taranmaz.
 
+Sunucu, kurucunun oyunundan bağımsız çalışır: oyun kapanırsa diğer oyuncular devam eder. Kurucu tekrar **1** seçerse açık sunucuya girer; odalar ve bağlı oyuncular korunur. Sunucuyu tamamen kapatmak için aynı başlatıcı menüsünde **3** seçin. Her oyuncu oda kurabilir; maçı o odanın kurucusu başlatır, diğer oyuncular hazır olur. Sunucu bilgisayarının oyuncusunun odada olması gerekmez.
+
 Oyuncu adında Türkçe harfler kullanılabilir; alt çizgi veya tire zorunlu değildir. Eski istemcinin ad alanı en fazla 12 karakterdir.
 
 Başlatıcı, oyunun güncelleme adresini her oturumda seçilen LAN/Radmin sunucusuna yönlendirir ve oyun kapandıktan sonra dosyanın önceki içeriğini geri yükler. Arkadaş bilgisayarında `127.0.0.1` kendi bilgisayarını gösterdiğinden bu yönlendirme güncelleme denetiminin sunucuya ulaşmasını sağlar.
@@ -31,6 +33,8 @@ Hata olursa kurulum penceresini kapatmadan son ekrandaki mesajın fotoğrafını
 `envanter_yoneticisi.bat`, sunucu bilgisayarındaki hesaplara eşya eklemek için isteğe bağlı araçtır. Sunucu kurulumunda gerekli Python/Tk/Pillow bileşenleri oyun klasörünün `.runtime` dizinine hazırlanır; sisteme Python veya paket kurmanız gerekmez. Paneli sunucu bilgisayarında, sunucu kurulumunu tamamladıktan sonra açın.
 
 ## Güncelleme ve içerik
+
+Sunucu bilgisayarında yama güncellemeden önce başlatıcıdaki **3** ile sunucuyu kapatın.
 
 Yeni yama sürümü çıktığında GitHub’daki **Code → Download ZIP** ile güncel kaynakları alın ve oyun klasöründeki dosyalarla birleştirin. Oyun dosyalarını tekrar indirmek gerekmez. Yerel hesaplar ve sunucu verileri `.runtime` klasöründe bu bilgisayarda saklanır; bu klasörü paylaşmayın.
 

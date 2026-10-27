@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [ValidateSet('Host','Join','Server')][string]$Mode,
+    [ValidateSet('Host','Join','Server','Stop')][string]$Mode,
     [string]$ServerIP='127.0.0.1',
     [string]$BindIP='127.0.0.1',
     [string]$Nick,
@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 . (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
 . (Join-Path $PSScriptRoot 'server/radmin_support.ps1')
-Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.8'
+Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.9'
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -208,6 +208,7 @@ if(-not $Mode){
     Write-Host ' WOLFTEAM 2012 - RADMIN'
     Write-Host ' [1] Bu bilgisayarda sunucuyu ve oyunu baslat'
     Write-Host ' [2] Arkadasinin Radmin sunucusuna katil'
+    Write-Host ' [3] Bu bilgisayardaki sunucuyu kapat'
     $choice=Read-Host 'Secim [1]'
     if(-not $choice -or $choice -eq '1'){
         $Mode='Host';$menuHost=$true
@@ -216,6 +217,8 @@ if(-not $Mode){
         $ServerIP=$BindIP
     }elseif($choice -eq '2'){
         $Mode='Join'
+    }elseif($choice -eq '3'){
+        $Mode='Stop'
     }else{throw 'Gecersiz secim.'}
 }
 if($Mode -in 'Host','Server' -and $BindIP -eq '127.0.0.1'){
@@ -285,6 +288,24 @@ function Stop-ProjectClient {
         Stop-Process -Id $row.ProcessId -Force -ErrorAction SilentlyContinue
     }
 }
+function Get-ProjectHosts {
+    $root=[IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')+'\'
+    $rows=Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.CommandLine -and $_.CommandLine.Replace('\','/').IndexOf('logan/host.py',[StringComparison]::OrdinalIgnoreCase) -ge 0
+    }
+    foreach($row in $rows){
+        $match=[regex]::Match($row.CommandLine,'--run\s+(?:"(?<quoted>[^"]+)"|(?<plain>\S+))')
+        if(-not $match.Success){continue}
+        $serverRun=if($match.Groups['quoted'].Success){$match.Groups['quoted'].Value}else{$match.Groups['plain'].Value}
+        try{$serverRun=[IO.Path]::GetFullPath($serverRun)}catch{continue}
+        if(-not $serverRun.StartsWith($root,[StringComparison]::OrdinalIgnoreCase)){continue}
+        if($row.CommandLine -match '--services-only|--init-only'){continue}
+        $readyFile=Join-Path $serverRun 'ready.json'
+        $ready=$null
+        if(Test-Path -LiteralPath $readyFile){try{$ready=Get-Content -LiteralPath $readyFile -Raw | ConvertFrom-Json}catch{}}
+        [pscustomobject]@{ProcessId=$row.ProcessId;Run=$serverRun;Ready=$ready}
+    }
+}
 function Stop-ProjectHost {
     $root=[IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')+'\'
     $uiRows=Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
@@ -315,13 +336,27 @@ function Stop-ProjectHost {
         if(Get-Process -Id $row.ProcessId -ErrorAction SilentlyContinue){Stop-Process -Id $row.ProcessId -Force -ErrorAction SilentlyContinue}
     }
 }
-if(-not $CheckOnly){
-    Stop-ProjectClient
-    if($Mode -in 'Host','Server'){Stop-ProjectHost}
+if($Mode -eq 'Stop'){
+    if(-not $CheckOnly){Stop-ProjectHost;Write-Host 'Yerel sunucu kapatildi.'}
+    return
 }
+$existingServer=$null
+if($Mode -in 'Host','Server'){
+    $hosts=@(Get-ProjectHosts)
+    foreach($hostRow in $hosts){
+        try{
+            if($hostRow.Ready -and $hostRow.Ready.bind -eq $BindIP -and
+               (Test-RadminServer -Address $BindIP)){$existingServer=$hostRow;break}
+        }catch{Write-Host 'Yerel sunucu henuz baglanti kabul etmiyor.' -ForegroundColor Yellow}
+    }
+    if($hosts.Count -and -not $existingServer){
+        throw 'Yerel sunucu aciliyor veya farkli Radmin adresinde calisiyor. Kisa sure sonra tekrar deneyin; gerekirse ana menudeki 3 ile kapatip 1 ile acin.'
+    }
+}
+if(-not $CheckOnly){Stop-ProjectClient}
 
 $runtimePath=Join-Path $PSScriptRoot '.runtime/logan'
-if($Mode -in 'Host','Server'){
+if($Mode -in 'Host','Server' -and -not $existingServer){
     if(-not(Test-Path -LiteralPath (Join-Path $runtimePath 'classes/wtserver/WTServer.class'))){
         if($CheckOnly){throw 'Yerel oyun sunucusu kurulumu gerekiyor.'}
         & (Join-Path $PSScriptRoot 'logan/setup.ps1')
@@ -401,11 +436,15 @@ if($Mode -in 'Host','Server'){
 $run=Join-Path $PSScriptRoot ('runs/'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $run -Force | Out-Null
 $ownedServer=$null
+$serverReady=$false
 $updateConfigPath=Join-Path $PSScriptRoot 'avital/Config.ini'
 $updateConfigOriginal=$null
 $started=Get-Date
 try{
-    if($Mode -in 'Host','Server'){
+    if($existingServer){
+        $ServerIP=$BindIP
+        Write-Host 'Acik yerel sunucuya yeniden giriliyor; diger oyuncular bagli kalir.'
+    }elseif($Mode -in 'Host','Server'){
         $ownedServer=Start-Process -FilePath $python -ArgumentList @('-u','logan/host.py','--bind',$BindIP,'--discovery-subnet',$subnet,'--run',('"'+$run+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $run 'server.stdout.log') -RedirectStandardError (Join-Path $run 'server.stderr.log') -PassThru
         $ready=$false
         for($i=0;$i -lt 240;$i++){
@@ -414,11 +453,16 @@ try{
             Start-Sleep -Milliseconds 250
         }
         if(-not $ready){throw "Sunucu hazir olmadi: $run"}
+        $serverReady=$true
         $ServerIP=$BindIP
+        Write-Host 'Sunucu oyundan bagimsiz acik kalir. Kapatmak icin ana menuden 3 secin.'
         Write-Host "Sunucu: $ServerIP | Oyuncu: $Nick | Radmin sunucusu hazir"
     }
-    @{ServerPID=if($ownedServer){$ownedServer.Id}else{$null};ServerIP=$ServerIP;Mode=$Mode;Engine='logan-java';Started=$started.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'session.json')
-    if($Mode -eq 'Server'){$ownedServer.WaitForExit();return}
+    @{ServerPID=if($ownedServer){$ownedServer.Id}elseif($existingServer){$existingServer.ProcessId}else{$null};ServerIP=$ServerIP;Mode=$Mode;Engine='logan-java';Started=$started.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'session.json')
+    if($Mode -eq 'Server'){
+        if($ownedServer){$ownedServer.WaitForExit()}else{Wait-Process -Id $existingServer.ProcessId -ErrorAction SilentlyContinue}
+        return
+    }
     if(-not (Test-Path -LiteralPath $updateConfigPath -PathType Leaf)){
         throw 'Guncelleme ayari avital/Config.ini bulunamadi. WolfTeam arsivini oyun klasorune cikarin.'
     }
@@ -445,7 +489,7 @@ try{
     @{SupervisorExitCode=$LASTEXITCODE;Ended=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'exit.json')
     Write-Host "Oyun kapandi. Kayitlar: $run"
 }finally{
-    if($ownedServer -and -not $ownedServer.HasExited){
+    if($ownedServer -and -not $serverReady -and -not $ownedServer.HasExited){
         Set-Content -LiteralPath (Join-Path $run 'stop.request') -Value 'stop'
         if(-not $ownedServer.WaitForExit(15000)){Stop-Process -Id $ownedServer.Id -Force}
     }

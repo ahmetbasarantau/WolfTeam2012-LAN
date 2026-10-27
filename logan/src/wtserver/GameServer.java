@@ -57,10 +57,15 @@ public class GameServer extends Server {
                     while(true)
                     {
                         Thread.sleep(1000);
-                        for (int i = 0; i < rooms.size(); i++) {
-                            Room room = rooms.get(i);
-                            if (room != null) {
-                                room.process();
+                        // Membership, timers and match starts share one state lock.
+                        // A closing room must not terminate the timer for every room.
+                        synchronized (GameServer.this) {
+                            for (Room room : new ArrayList<Room>(rooms)) {
+                                try { room.process(); }
+                                catch (Exception ex) {
+                                    System.err.println("[ROOM] tick failed room=" + room.getRoomNumber());
+                                    ex.printStackTrace();
+                                }
                             }
                         }
                     }
@@ -152,7 +157,7 @@ public class GameServer extends Server {
     }
     
     @Override
-    public void processMsg(Client client, int msgId, byte buffer [])
+    public synchronized void processMsg(Client client, int msgId, byte buffer [])
     {
         if (ServerConfig.CLIENT_2012 && msgId == 0x1418) {
             byte[] ack=Packet2012.equipmentCheck(client.getSeqNum(),client.getUserId());
@@ -471,7 +476,16 @@ public class GameServer extends Server {
             Room room = getRoomWithNumber(n);
             if(room != null)
             {
-            client.setRoomSlotStatus((byte)1);
+                if (room.gameStarted) return;
+                // Ready is a member action; only the ROOM master starts a match.
+                // The computer running the server has no special room privileges.
+                if (client.getRoomSlot() != room.getRoomMaster()) {
+                    byte ready = (byte)(client.getRoomSlotStatus() == 0 ? 1 : 0);
+                    client.setRoomSlotStatus(ready);
+                    room.write(new UdpReadyAck((byte)client.getRoomSlot(), ready));
+                    return;
+                }
+                client.setRoomSlotStatus((byte)1);
                 boolean hasBothTeams = room.getTeamCount((byte)1) > 0 && room.getTeamCount((byte)2) > 0;
                 if (hasBothTeams && (room.getTeamReadyCount((byte)1) < 1 || room.getTeamReadyCount((byte)2) < 1)) {
                     startGameAck.setErrorCode(StartGameAck.ATLEAST_2_READY);
@@ -526,9 +540,11 @@ public class GameServer extends Server {
             Room room = getRoomWithNumber(n);
             if(room != null)
             {
-                UdpReadyAck udpReadyAck = new UdpReadyAck(room.getUserSlot(client), buffer);
+                if (buffer.length == 0) return;
+                byte ready = (byte)(buffer[0] == 0 ? 0 : 1);
+                UdpReadyAck udpReadyAck = new UdpReadyAck(room.getUserSlot(client), ready);
+                client.setRoomSlotStatus(ready);
                 room.write(udpReadyAck);
-                client.setRoomSlotStatus(udpReadyAck.userReady());
                 if (room.gameStarted) {
                     EnterGameAck enterGameAck = new EnterGameAck((byte) client.getRoomSlot(), client.getRoomTeam(), client.getRoomTeamSlot());
                     room.write(enterGameAck);
@@ -624,8 +640,15 @@ public class GameServer extends Server {
                     client.write(enterAck.getData(client.getSeqNum(), client, EnterAck.ALMOST_OVER), enterAck.getSize());
                 }else {
                     RoomCharsAck charsAck = new RoomCharsAck();
+                    if (client.getRoomNumber() >= 0) {
+                        if (client.getRoomNumber() == n) client.write(charsAck.getData(client.getSeqNum(), room), charsAck.getSize());
+                        return; // A repeated join must never seat the same socket twice.
+                    }
                     room.addUser(client);
-                    room.write(enterAck, client);
+                    // 2012 uses the complete 0x1605 snapshot. The donor's
+                    // 2013 0x1607 has a different member layout and corrupts
+                    // existing peers before the following snapshot can repair it.
+                    if (!ServerConfig.CLIENT_2012) room.write(enterAck, client);
                     // Broadcast the roster to EVERYONE in the room (not just the joiner) so players
                     // already in the room see the new player appear in a slot. (Was: charsAck sent
                     // only to the joiner -> a joined player was invisible to existing players.)
@@ -1728,6 +1751,8 @@ public class GameServer extends Server {
         
         public synchronized void addUser(Client user)
         {
+            for (Client member : users) if (member == user) return;
+            if (isFull()) throw new IllegalStateException("Room is full");
             short slot = -1;
             for(int i = 0; i < users.length; i++)
                 if(users[i] == null)
@@ -1736,6 +1761,7 @@ public class GameServer extends Server {
                     slot = (short)i;
                     break;
                 }
+            if (slot < 0) throw new IllegalStateException("No free room slot");
             nUsers++;
             user.setRoomNumber(this.roomNumber);
             user.setRoomSlot(slot);
@@ -1965,6 +1991,9 @@ public class GameServer extends Server {
         
         public synchronized void removeUser(Client user)
         {
+            boolean present = false;
+            for (Client member : users) if (member == user) { present = true; break; }
+            if (!present) return; // Exit and socket-close may describe the same departure.
             byte team = user.getRoomTeam();
             deadList.remove(user);
             for(int i = 0; i < users.length; i++)
@@ -1996,7 +2025,7 @@ public class GameServer extends Server {
             }
             if(nUsers == 0)
                 rooms.remove(this);
-            if(getTeamCount(team) == 0)
+            if(gameStarted && getTeamCount(team) == 0)
             {
                 if(team == 2){
                     redScore++;
@@ -2361,7 +2390,7 @@ public class GameServer extends Server {
         }
         public boolean isFull()
         {
-            return roomCapacity == nUsers;
+            return nUsers >= Math.min(roomCapacity & 255, users.length);
         }
         public int getTeamCount(byte team)
         {

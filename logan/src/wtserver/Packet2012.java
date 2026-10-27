@@ -155,7 +155,7 @@ public final class Packet2012 {
         Users users=new Users();
         for(Client c:room.getUsers()) {
             p.u8(c.getRoomSlot()).u8(c.getRoomTeam()).u8(c.getRoomTeamSlot())
-             .u8(c.getRoomSlot()==room.getRoomMaster()?2:0).u16(c.getSessionId()).u8(0).u8(0).u8(c.getUserLevel())
+             .u8(c.getRoomSlot()==room.getRoomMaster()?2:(c.getRoomSlotStatus()>0?1:0)).u16(c.getSessionId()).u8(0).u8(0).u8(c.getUserLevel())
              .u32(0).u32(0).ascii(c.getLoginName()).wide(c.getCallsign()).wide("");
             int[] ep=GameServer.INSTANCE.peerConnBlock(c);
             p.endpoint(ep[0],ep[1]).endpoint(ep[2],ep[3]);
