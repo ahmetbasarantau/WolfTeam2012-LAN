@@ -18,6 +18,8 @@ Kurulum, oyunun LAN bileşenleri için taşınabilir Python'u indirir; Direct3D 
 
 Ev ağındaki bilgisayarlar aynı ağa bağlansın. Farklı ağlardaki oyuncular aynı Radmin VPN ağına katılsın. Sunucu sahibi `WolfteamBaslat.bat` içinde **1** seçer; arkadaşları **2** seçip listeden sunucuyu seçer. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
 
+Başlatıcı, oyunun güncelleme adresini her oturumda seçilen LAN/Radmin sunucusuna yönlendirir ve oyun kapandıktan sonra dosyanın önceki içeriğini geri yükler. Arkadaş bilgisayarında `127.0.0.1` kendi bilgisayarını gösterdiğinden bu yönlendirme güncelleme denetiminin sunucuya ulaşmasını sağlar.
+
 Hata olursa kurulum penceresini kapatmadan son ekrandaki mesajın fotoğrafını oyun kurucusuna gönderin.
 
 ## Envanter yöneticisi

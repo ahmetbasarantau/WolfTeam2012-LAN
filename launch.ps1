@@ -364,6 +364,8 @@ if($Mode -in 'Host','Server'){
 $run=Join-Path $PSScriptRoot ('runs/'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $run -Force | Out-Null
 $ownedServer=$null
+$updateConfigPath=Join-Path $PSScriptRoot 'avital/Config.ini'
+$updateConfigOriginal=$null
 $started=Get-Date
 try{
     if($Mode -in 'Host','Server'){
@@ -380,6 +382,28 @@ try{
     }
     @{ServerPID=if($ownedServer){$ownedServer.Id}else{$null};ServerIP=$ServerIP;Mode=$Mode;Engine='logan-java';Started=$started.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'session.json')
     if($Mode -eq 'Server'){$ownedServer.WaitForExit();return}
+    if(-not (Test-Path -LiteralPath $updateConfigPath -PathType Leaf)){
+        throw 'Guncelleme ayari avital/Config.ini bulunamadi. WolfTeam arsivini oyun klasorune cikarin.'
+    }
+    # The 2012 updater reads URL1. Point it at the selected LAN host for this
+    # session so joining clients do not try their own 127.0.0.1 or the public CDN.
+    $updateConfigOriginal=[IO.File]::ReadAllBytes($updateConfigPath)
+    $bytePreservingEncoding=[Text.Encoding]::GetEncoding(28591)
+    $updateConfigText=$bytePreservingEncoding.GetString($updateConfigOriginal)
+    $urlPattern='(?im)^(?<prefix>[ \t]*URL1[ \t]*=[ \t]*)https?://[^/\s]+'
+    if(-not [regex]::IsMatch($updateConfigText,$urlPattern)){
+        throw 'avital/Config.ini icinde URL1 guncelleme adresi bulunamadi.'
+    }
+    $updateBase='http://'+$ServerIP
+    $urlRewriter=[System.Text.RegularExpressions.MatchEvaluator]{
+        param($match)
+        $match.Groups['prefix'].Value+$updateBase
+    }
+    $routedUpdateConfig=[regex]::Replace($updateConfigText,$urlPattern,$urlRewriter,1)
+    if($routedUpdateConfig -ne $updateConfigText){
+        [IO.File]::WriteAllBytes($updateConfigPath,$bytePreservingEncoding.GetBytes($routedUpdateConfig))
+        Write-Host "Oyun guncelleme hizmeti LAN sunucusuna yonlendirildi: $ServerIP"
+    }
     & $python 'server/client_diagnostics.py' --root $PSScriptRoot --output $run --nick $Nick --server $ServerIP
     @{SupervisorExitCode=$LASTEXITCODE;Ended=(Get-Date).ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'exit.json')
     Write-Host "Oyun kapandi. Kayitlar: $run"
@@ -389,4 +413,8 @@ try{
         if(-not $ownedServer.WaitForExit(15000)){Stop-Process -Id $ownedServer.Id -Force}
     }
     if(Test-Path -LiteralPath 'd3d9_proxy.log'){Copy-Item -LiteralPath 'd3d9_proxy.log' -Destination $run -ErrorAction SilentlyContinue}
+    if($updateConfigOriginal){
+        try{[IO.File]::WriteAllBytes($updateConfigPath,$updateConfigOriginal)}
+        catch{Write-Warning 'Oyun guncelleme ayari eski haline getirilemedi; sonraki baslatmada yeniden duzenlenecek.'}
+    }
 }
