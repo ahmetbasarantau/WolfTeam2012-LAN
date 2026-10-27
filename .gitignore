@@ -55,3 +55,7 @@ Profiles/
 
 # Local-only panel
 /local_panel/
+
+# Generated private Radmin invitation and remembered host
+/RadminKatil.bat
+/RadminSunucu.json

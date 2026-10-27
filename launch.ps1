@@ -9,7 +9,8 @@ param(
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 . (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
-Write-Host 'WolfTeam LAN - Baslatici 2026.10.27.5'
+. (Join-Path $PSScriptRoot 'server/radmin_support.ps1')
+Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.6'
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -123,15 +124,9 @@ if(Test-Path -LiteralPath $accountCacheFile){try{$cache=@(Get-Content -LiteralPa
 if($cache -notcontains $Nick){$cache+= $Nick}
 $cache | Sort-Object -Unique | ConvertTo-Json | Set-Content -LiteralPath $accountCacheFile -Encoding utf8
 function Get-LanAddress {
-    $configs=@(Get-NetIPConfiguration -All | Where-Object {$_.NetAdapter.Status -eq 'Up' -and $_.IPv4Address})
-    foreach($config in $configs){
-        if($config.NetAdapter.InterfaceDescription -match '(?i)Radmin|Famatech'){
-            foreach($address in $config.IPv4Address){if($address.IPAddress -match '^26\.') {return $address}}
-        }
-    }
-    $configs=@($configs | Sort-Object @{Expression={if($_.IPv4DefaultGateway){0}else{1}}})
-    foreach($config in $configs){foreach($address in $config.IPv4Address){if($address.IPAddress -match '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)'){return $address}}}
-    return $null
+    $address=Get-RadminAddresses | Select-Object -First 1
+    if(-not $address){throw 'Radmin VPN etkin degil. Radmini acip arkadaslarinizla ayni Radmin agina baglanin.'}
+    return $address
 }
 function ConvertFrom-LanDiscoveryOutput([string[]]$Lines) {
     # Read individual native-process records. Avoid JSON collection wrappers
@@ -154,9 +149,9 @@ function ConvertFrom-LanDiscoveryOutput([string[]]$Lines) {
 $menuHost=$false
 if(-not $Mode){
     Write-Host ''
-    Write-Host ' WOLFTEAM 2012 - LAN'
+    Write-Host ' WOLFTEAM 2012 - RADMIN'
     Write-Host ' [1] Bu bilgisayarda sunucuyu ve oyunu baslat'
-    Write-Host ' [2] Arkadasinin LAN sunucusuna katil'
+    Write-Host ' [2] Arkadasinin Radmin sunucusuna katil'
     $choice=Read-Host 'Secim [1]'
     if(-not $choice -or $choice -eq '1'){
         $Mode='Host';$menuHost=$true
@@ -166,7 +161,8 @@ if(-not $Mode){
     }elseif($choice -eq '2'){
         $Mode='Join'
         while($true){
-            Write-Host 'Ayni agdaki WolfTeam sunuculari araniyor...'
+            [void](Get-LanAddress)
+            Write-Host 'Radmin sunuculari araniyor...'
             $foundLines=@(& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --launcher)
             if($LASTEXITCODE -ne 0){throw 'LAN taramasi tamamlanamadi. Yamanin launch.ps1 dosyasini ve server klasorunu birlikte guncelleyin; yukaridaki hata ayrintisini kurucuya iletin.'}
             $servers=@(ConvertFrom-LanDiscoveryOutput -Lines $foundLines)
@@ -196,13 +192,13 @@ if(-not $Mode){
                 $ServerIP=$selectedIP.ToString()
                 break
             }
-            Write-Host 'Sunucu bulunamadi. Kurucu sunucuyu baslatsin ve ayni Radmin agina baglanin; sonra R ile yeniden tara.' -ForegroundColor Yellow
+            Write-Host 'Sunucu bulunamadi. Kurucunun RadminKatil.bat dosyasini oyun klasorune koyup acin; bu dosya adres yazmadan dogrudan baglanir.' -ForegroundColor Yellow
             $retry=Read-Host '[R] Yeniden tara  [Q] Cik'
             if($retry -match '^[Qq]$'){exit 0}
         }
     }else{throw 'Gecersiz secim.'}
 }
-if($Mode -eq 'Host' -and $BindIP -eq '127.0.0.1'){
+if($Mode -in 'Host','Server' -and $BindIP -eq '127.0.0.1'){
     $address=Get-LanAddress
     if($address){$BindIP=$address.IPAddress;$ServerIP=$BindIP}
 }
@@ -287,7 +283,7 @@ function Stop-ProjectHost {
 }
 if(-not $CheckOnly){
     Stop-ProjectClient
-    if($Mode -eq 'Host'){Stop-ProjectHost}
+    if($Mode -in 'Host','Server'){Stop-ProjectHost}
 }
 
 $runtimePath=Join-Path $PSScriptRoot '.runtime/logan'
@@ -311,21 +307,18 @@ if(-not [Net.IPAddress]::TryParse([string]$targetAddress,[ref]$parsed)){
     throw "Sunucu IPv4 adresi alinamadi veya gecersiz: '$targetAddress'. Sunucu listesinde adres gorunmuyorsa R ile yeniden tara."
 }
 if($parsed.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork){throw 'IPv4 gerekli.'}
-$isRadmin=$false
-if([Net.IPAddress]::IsLoopback($parsed)){$subnet='127.0.0.0/8'}else{
-    $route=Find-NetRoute -RemoteIPAddress $targetAddress | Where-Object {$_.PSObject.Properties['IPAddress']} | Select-Object -First 1
-    if(-not $route){throw 'LAN rotasi bulunamadi.'}
-    $radminTarget=$targetAddress -match '^26\.'
-    if($radminTarget){
-        $radminAddresses=@(Get-NetIPConfiguration -All | Where-Object {$_.NetAdapter.Status -eq 'Up' -and $_.NetAdapter.InterfaceDescription -match '(?i)Radmin|Famatech'} | ForEach-Object {$_.IPv4Address} | ForEach-Object {$_.IPAddress} | Where-Object {$_ -match '^26\.'})
-        if(-not $radminAddresses.Count){throw 'Radmin VPN bagdastiricisi etkin degil. Iki bilgisayar da ayni Radmin agina baglanmali.'}
-        if($radminAddresses -notcontains $route.IPAddress){throw 'Radmin IP rotasi Radmin VPN bagdastiricisini kullanmiyor.'}
-        $isRadmin=$true
-    }
-    $policyArgs=@((Join-Path $PSScriptRoot 'server/network_policy.py'),'--subnet',$route.IPAddress,$route.PrefixLength)
-    if($isRadmin){$policyArgs+='--radmin'}
-    $subnet=& $python @policyArgs
-    if($LASTEXITCODE){throw 'LAN alt agi belirlenemedi.'}
+if($parsed.ToString() -notmatch '^26\.'){throw 'Bu baslatici yalniz Radmin VPN adresleriyle calisir.'}
+$radminAddresses=@(Get-RadminAddresses | ForEach-Object {$_.IPAddress})
+if(-not $radminAddresses.Count){throw 'Radmin VPN etkin degil. Radmini acip ayni Radmin agina baglanin.'}
+$isRadmin=$true
+$subnet='26.0.0.0/8'
+if($Mode -eq 'Join'){
+    Write-Host 'Radmin sunucusuna dogrudan baglanti kontrol ediliyor...'
+    try{$localAddress=Test-RadminServer -Address $parsed.ToString()}
+    catch{throw 'Radmin sunucusu yanit vermedi. Kurucu 1 ile sunucuyu acsin; iki bilgisayar da ayni Radmin aginda cevrimici olmali.'}
+    if($radminAddresses -notcontains $localAddress){throw 'Sunucu baglantisi Radmin kartini kullanmiyor. Radmin VPN baglantisini yeniden acin.'}
+}elseif($radminAddresses -notcontains $parsed.ToString()){
+    throw 'Secilen sunucu adresi bu bilgisayarin Radmin kartina ait degil.'
 }
 $policyFile=Join-Path $PSScriptRoot 'network-policy.json'
 $policy=if(Test-Path -LiteralPath $policyFile){Get-Content -LiteralPath $policyFile -Raw | ConvertFrom-Json}else{$null}
@@ -388,7 +381,9 @@ try{
         }
         if(-not $ready){throw "Sunucu hazir olmadi: $run"}
         $ServerIP=$BindIP
-        Write-Host "Sunucu: $ServerIP | Oyuncu: $Nick | LAN sunucusu hazır"
+        Write-Host "Sunucu: $ServerIP | Oyuncu: $Nick | Radmin sunucusu hazir"
+        $joinFile=New-RadminJoinFile -Root $PSScriptRoot -ServerIP $ServerIP
+        Write-Host "Arkadasina gonder: $joinFile"
     }
     @{ServerPID=if($ownedServer){$ownedServer.Id}else{$null};ServerIP=$ServerIP;Mode=$Mode;Engine='logan-java';Started=$started.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $run 'session.json')
     if($Mode -eq 'Server'){$ownedServer.WaitForExit();return}
