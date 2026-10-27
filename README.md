@@ -4,15 +4,22 @@ Windows launcher and local LAN server for playing the September 2012 Softnyx cli
 
 ## Contents
 
-This repository contains the project source: launcher scripts, LAN discovery and server code, SQL migrations, and the Direct3D compatibility shim. It does **not** contain the commercial WolfTeam client, its game data, locally saved accounts, databases, logs, or the private inventory/visual tools.
+This is the patch source repository: launcher scripts, LAN discovery and server code, SQL migrations, and the Direct3D compatibility shim. It does **not** contain the commercial WolfTeam client, its game data, locally saved accounts, databases, logs, or the private inventory/visual tools.
 
-You need a separately obtained copy of the 2012 client that you are entitled to use. Public release downloads contain project updates only; they do not replace or redistribute the game client.
+You need a separately obtained copy of the 2012 client that you are entitled to use. This repository is source code, not a ready-to-play game installer.
+
+## Getting the latest patch source
+
+- If you cloned this repository, run `git pull` in the repository folder.
+- Without Git, use **Code → Download ZIP** on GitHub to get the latest source snapshot.
+
+Build and apply the patch source beside your own compatible client. The full game client remains on your computer and is not part of this repository.
 
 ## Playing with friends
 
 1. Install the same 2012 client version on both computers.
 2. Connect both computers to the same Radmin VPN network (or the same home LAN).
-3. Apply the latest project update from **Releases** to the client folder.
+3. Apply the current patch source to the compatible client installation.
 4. Start `WolfteamBaslat.bat`. Choose **1** on the host computer. Once its server is ready, friends choose **2** and select the host from discovery.
 5. The host computer keeps the local account and inventory database in `.runtime/logan/data`.
 
