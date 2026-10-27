@@ -300,9 +300,21 @@ if(-not $policy -or $policy.Subnet -ne $subnet -or [bool]$policy.Radmin -ne $isR
     else{& (Join-Path $PSScriptRoot 'configure_network.ps1') -LanSubnet $subnet}
     $policy=Get-Content -LiteralPath $policyFile -Raw | ConvertFrom-Json
 }
-$env:PYTHONHOME=$policy.PythonHome
 $env:PYTHONPATH=Join-Path $PSScriptRoot 'server'
-if(Test-Path -LiteralPath $runtimePython){$python=$runtimePython}
+if(Test-UsablePython $runtimePython){
+    $python=$runtimePython
+    $env:PYTHONHOME=Split-Path $runtimePython
+}else{
+    $legacyPython=Join-Path $PSScriptRoot '.runtime/python.exe'
+    if(-not $policy.PythonHome -or -not (Test-Path -LiteralPath $legacyPython)){
+        throw 'Python tasinabilir dosyalari eksik. Kurulum.bat dosyasini yeniden calistirin.'
+    }
+    $env:PYTHONHOME=$policy.PythonHome
+    if(-not (Test-UsablePython $legacyPython)){
+        throw 'Python tasinabilir dosyalari acilamadi. Kurulum.bat dosyasini yeniden calistirin.'
+    }
+    $python=$legacyPython
+}
 & $python -c 'import ipaddress,sys; n=ipaddress.ip_network(sys.argv[1]); a=ipaddress.ip_address(sys.argv[2]); assert a.version==4 and (a.is_loopback or a in n)' $subnet $targetAddress
 if($LASTEXITCODE){throw 'Sunucu secilen yerel agin disinda.'}
 if($CheckOnly){Write-Host 'Oyun ve ağ ayarları hazır.';return}
