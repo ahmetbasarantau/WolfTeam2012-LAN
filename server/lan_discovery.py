@@ -43,13 +43,12 @@ def get_broadcast_interfaces():
         return []
     script = r'''$ErrorActionPreference='Stop'
 [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)
-$adapters=@{}
-Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue | ForEach-Object { $adapters[$_.ifIndex]=$_ }
-$rows=@(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object {
-  $a=$_; $adapter=$adapters[$a.InterfaceIndex]
-  if($a.AddressState -in @('Invalid','Duplicate','Tentative')) { return }
-  if($adapter -and $adapter.Status -ne 'Up') { return }
-  [pscustomobject]@{IP=$a.IPAddress; Prefix=[int]$a.PrefixLength; Description=[string]$adapter.InterfaceDescription; Alias=$a.InterfaceAlias}
+$rows=@(foreach($adapter in [Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces()) {
+  if($adapter.OperationalStatus -ne 'Up') { continue }
+  foreach($a in $adapter.GetIPProperties().UnicastAddresses) {
+    if($a.Address.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork) { continue }
+    [pscustomobject]@{IP=$a.Address.ToString(); Mask=$a.IPv4Mask.ToString(); Description=$adapter.Description; Alias=$adapter.Name}
+  }
 }); ConvertTo-Json -InputObject $rows -Compress'''
     try:
         result = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-Command', script],
@@ -67,7 +66,8 @@ $rows=@(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop | ForEach-Object 
     for row in rows:
         try:
             address = ipaddress.ip_address(row['IP'])
-            network = ipaddress.ip_interface(f"{address}/{int(row['Prefix'])}").network
+            mask = row.get('Mask') or row['Prefix']
+            network = ipaddress.ip_interface(f'{address}/{mask}').network
             description = (row.get('Description', '') + ' ' + row.get('Alias', '')).lower()
             radmin = 'radmin' in description or 'famatech' in description
             if radmin:

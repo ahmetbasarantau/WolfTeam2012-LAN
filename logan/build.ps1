@@ -10,8 +10,9 @@ $argsFile = Join-Path $root '.runtime/logan/sources.txt'
 & $compiler -encoding UTF-8 --release 17 -d $outputPath ('@' + $argsFile)
 if ($LASTEXITCODE) { throw 'Yerel oyun sunucusu derlenemedi.' }
 $stamp = @{}
+$sourceRoot = $PSScriptRoot.TrimEnd('\') + '\'
 foreach ($source in $sources) {
-    $relative = [IO.Path]::GetRelativePath($PSScriptRoot, $source.FullName).Replace('\','/')
+    $relative = $source.FullName.Substring($sourceRoot.Length).Replace('\','/')
     $stamp[$relative] = (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
 }
 $stamp | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $root '.runtime/logan/build.json') -Encoding utf8

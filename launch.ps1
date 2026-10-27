@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 . (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
-Write-Host 'WolfTeam LAN - Baslatici 2026.10.27.4'
+Write-Host 'WolfTeam LAN - Baslatici 2026.10.27.5'
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -298,8 +298,9 @@ if($Mode -in 'Host','Server'){
     }
     $buildStamp=Get-Content -LiteralPath (Join-Path $runtimePath 'build.json') -Raw | ConvertFrom-Json
     $stale=$false
-    foreach($file in Get-ChildItem (Join-Path $PSScriptRoot 'logan/src') -Filter '*.java' -Recurse){
-        $relative=[IO.Path]::GetRelativePath((Join-Path $PSScriptRoot 'logan'),$file.FullName).Replace('\','/')
+    $sourceRoot=(Join-Path $PSScriptRoot 'logan').TrimEnd('\')+'\'
+    foreach($file in Get-ChildItem (Join-Path $sourceRoot 'src') -Filter '*.java' -Recurse){
+        $relative=$file.FullName.Substring($sourceRoot.Length).Replace('\','/')
         if($buildStamp.$relative -ne (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash){$stale=$true;break}
     }
     if($stale -and -not $CheckOnly){& (Join-Path $PSScriptRoot 'logan/build.ps1')}
@@ -378,7 +379,7 @@ $updateConfigOriginal=$null
 $started=Get-Date
 try{
     if($Mode -in 'Host','Server'){
-        $ownedServer=Start-Process -FilePath $python -ArgumentList @('-u','logan/host.py','--bind',$BindIP,'--run',('"'+$run+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $run 'server.stdout.log') -RedirectStandardError (Join-Path $run 'server.stderr.log') -PassThru
+        $ownedServer=Start-Process -FilePath $python -ArgumentList @('-u','logan/host.py','--bind',$BindIP,'--discovery-subnet',$subnet,'--run',('"'+$run+'"')) -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $run 'server.stdout.log') -RedirectStandardError (Join-Path $run 'server.stderr.log') -PassThru
         $ready=$false
         for($i=0;$i -lt 240;$i++){
             if($ownedServer.HasExited){throw "Sunucu acilamadi: $run"}

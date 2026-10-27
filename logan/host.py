@@ -4,6 +4,7 @@ import concurrent.futures
 import contextlib
 import ctypes
 import http.server
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -24,18 +25,24 @@ DISCOVERY_REQUEST = b'WOLFTEAM_2012_LAN_DISCOVER_V1'
 DISCOVERY_REPLY = b'WOLFTEAM_2012_LAN_SERVER_V1'
 
 
-def serve_lan_discovery(sock):
+def serve_lan_discovery(sock, allowed_network):
     """Answer launcher broadcasts on the selected LAN/Radmin interface."""
     sock.settimeout(.5)
     while not STOP.is_set():
         try:
             data, peer = sock.recvfrom(256)
-            if data == DISCOVERY_REQUEST:
-                sock.sendto(DISCOVERY_REPLY, peer)
         except socket.timeout:
             continue
-        except OSError:
+        except OSError as exc:
+            if getattr(exc, 'winerror', None) == 10054:
+                continue
             break
+        if data == DISCOVERY_REQUEST and ipaddress.ip_address(peer[0]) in allowed_network:
+            try:
+                sock.sendto(DISCOVERY_REPLY, peer)
+            except OSError:
+                # One disconnected VPN peer must not stop discovery for everyone.
+                continue
 
 
 def wait_port(port, process=None, address='127.0.0.1', timeout=30):
@@ -182,11 +189,19 @@ class AuxiliaryServer(socketserver.ThreadingTCPServer):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--bind', default='127.0.0.1')
+    parser.add_argument('--discovery-subnet', help='Selected LAN/Radmin network allowed to discover this host')
     parser.add_argument('--run', type=Path, required=True)
     parser.add_argument('--init-only', action='store_true')
     parser.add_argument('--services-only', action='store_true',
                         help='Run only MariaDB and the loopback PHP API; do not launch game services')
     args = parser.parse_args()
+    bind_address = ipaddress.IPv4Address(args.bind)
+    # Older launchers do not pass a subnet. Keep their Radmin/loopback scope;
+    # updated launchers pass the actual selected interface subnet explicitly.
+    default_prefix = 8 if bind_address.is_loopback or bind_address in ipaddress.ip_network('26.0.0.0/8') else 24
+    discovery_network = ipaddress.ip_network(args.discovery_subnet or f'{args.bind}/{default_prefix}', strict=False)
+    if discovery_network.version != 4 or bind_address not in discovery_network:
+        parser.error('Discovery subnet must contain the selected IPv4 bind address')
     args.run.mkdir(parents=True, exist_ok=True)
     # Killing the supervisor also kills only its children (launcher window close included).
     import sys
@@ -264,9 +279,12 @@ def main():
             servers.append(server)
             threading.Thread(target=server.serve_forever, daemon=True).start()
         discovery = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        discovery.bind((args.bind, DISCOVERY_PORT))
+        # A socket bound only to a unicast address can miss directed broadcasts.
+        # Listen for broadcasts on all interfaces and enforce the selected LAN
+        # on received peers before replying. Game sockets stay on args.bind.
+        discovery.bind(('0.0.0.0', DISCOVERY_PORT))
         discovery_sockets.append(discovery)
-        threading.Thread(target=serve_lan_discovery, args=(discovery,), daemon=True,
+        threading.Thread(target=serve_lan_discovery, args=(discovery, discovery_network), daemon=True,
                          name='lan-discovery').start()
         env = dict(os.environ, WOLF_BIND_IP=args.bind)
         java = start('java', [str(RUNTIME / 'java/bin/java.exe'), '-Dwt.log.udp=false',
