@@ -25,7 +25,7 @@ function Test-PythonRuntime([string]$Path) {
 Write-Host ''
 Write-Host 'WolfTeam 2012 yerel oyun kurulumu' -ForegroundColor Cyan
 Write-Host 'Bu klasorde oyun istemcisi ve wolf.xfs bulunmali.'
-$missing = @('Wolfteam.exe','wolf.xfs') | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_) -PathType Leaf) }
+$missing = @('Wolfteam.exe','wolf.xfs','sound.xfs') | Where-Object { -not (Test-Path -LiteralPath (Join-Path $root $_) -PathType Leaf) }
 if ($missing.Count) {
     throw ('Oyun dosyalari eksik: ' + ($missing -join ', ') + '. Archive.org oyun arsivini bu klasore cikarin: https://archive.org/details/wolfteamturkiye')
 }
@@ -51,6 +51,11 @@ $env:PYTHONPATH = Join-Path $root 'server'
 Write-Host 'Oyun calisma ortami hazir.' -ForegroundColor Green
 
 Write-Host 'Direct3D uyumluluk dosyalari derleniyor...' -ForegroundColor Cyan
+$framework = Join-Path $env:WINDIR 'Microsoft.NET/Framework/v4.0.30319'
+if (-not (Test-Path -LiteralPath (Join-Path $framework 'csc.exe')) -or
+    -not (Test-Path -LiteralPath (Join-Path $framework 'ilasm.exe'))) {
+    throw 'Bu Windows kurulumunda Direct3D uyumluluk araclari eksik. Windows ozelliklerinden .NET Framework 4.x etkinlestirin.'
+}
 $compatibilityBuild = Join-Path $root 'compatibility/build.ps1'
 if (-not (Test-Path -LiteralPath $compatibilityBuild -PathType Leaf)) {
     throw 'Uyumluluk kaynaklari bulunamadi. Tam oyun/yama paketini kullanin.'
