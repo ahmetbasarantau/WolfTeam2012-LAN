@@ -17,7 +17,7 @@ import wtserver.client.ServerMsg;
  */
 public class RevivalAck extends ServerMsg {
     private final short msgId = ServerMsg.CS_FD_REVIVALUSER_ACK;
-    byte slot1, slot2, team;
+    byte slot1, slot2, team, targetTeamSlot;
     
     public RevivalAck(byte recv_buffer [], byte team)
     {
@@ -29,6 +29,11 @@ public class RevivalAck extends ServerMsg {
         System.out.println("Revive " + slot1 + ' ' + slot2);
     }
     
+    public RevivalAck(Client target, Client reviver) {
+        this(new byte[]{(byte)target.getRoomSlot(), (byte)reviver.getRoomSlot()}, target.getRoomTeam());
+        targetTeamSlot = target.getRoomTeamSlot();
+    }
+
     public byte [] getData(short seqNum)
     {
         buffer.position(0);
@@ -41,14 +46,21 @@ public class RevivalAck extends ServerMsg {
         addByte(checksum);
         
         addByte((byte) 0);
-        addByte((byte) slot2);//player team
-        addByte((byte) team);//target team
-        addByte((byte) 0);
-        addByte((byte) slot1);//slot2
-        addByte((byte) 0);
-        
-        
-        
+        if (wtserver.ServerConfig.CLIENT_2012) {
+            // Native 3426f7f0: revived slot, team, team-slot, reviver, four reserved bytes.
+            addByte(slot1);
+            addByte(team);
+            addByte(targetTeamSlot);
+            addByte(slot2);
+            addInteger(0);
+        } else {
+            addByte(slot2);
+            addByte(team);
+            addByte((byte)0);
+            addByte(slot1);
+            addByte((byte)0);
+        }
+
         size = (short) buffer.position();
         if((size - 8) % 16 > 0)
         {

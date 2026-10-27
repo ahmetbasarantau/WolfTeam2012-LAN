@@ -17,6 +17,7 @@ import wtserver.client.ServerMsg;
 public class PlayerDeadAck extends ServerMsg {
     private final short msgId = ServerMsg.CS_FD_PLAYERDEAD_ACK;
     private byte killer;
+    private byte reportedVictim;
     private byte slot;
     private short weapon;
     private short redScore, blueScore;
@@ -25,8 +26,14 @@ public class PlayerDeadAck extends ServerMsg {
     {
         size = 24;
         buffer = ByteBuffer.allocate(size);
-        killer = recv_buffer[1];
-        weapon = (short) (recv_buffer[8] + (recv_buffer[9] * 0x100));
+        // Native 2012 writer 3426ed10: killer, victim, four flags, u16 weapon.
+        int minimum = wtserver.ServerConfig.CLIENT_2012 ? 8 : 10;
+        if (recv_buffer == null || recv_buffer.length < minimum)
+            throw new IllegalArgumentException("Truncated death request");
+        reportedVictim = recv_buffer[1];
+        killer = recv_buffer[wtserver.ServerConfig.CLIENT_2012 ? 0 : 1];
+        int offset = wtserver.ServerConfig.CLIENT_2012 ? 6 : 8;
+        weapon = (short)((recv_buffer[offset] & 255) | ((recv_buffer[offset+1] & 255) << 8));
         
         System.out.println("Killer " + killer + " Weapon " + weapon);
     }
@@ -54,7 +61,8 @@ public class PlayerDeadAck extends ServerMsg {
         //addByte((byte) 1);
         //addByte((byte) 0);
         addShort((short) blueScore); //Red Score
-        addByte((byte) 0);
+        // Native 342707f0 reads scores then victim and flag immediately.
+        if (!wtserver.ServerConfig.CLIENT_2012) addByte((byte)0);
         addByte((byte) slot);//dead slot
         addByte((byte) 1);
         
@@ -76,6 +84,9 @@ public class PlayerDeadAck extends ServerMsg {
         this.slot = slot;
     }
         
+    public byte getReportedVictimSlot() { return reportedVictim; }
+    public short getWeapon() { return weapon; }
+
     public byte getKillerSlot()
     {
         return killer;

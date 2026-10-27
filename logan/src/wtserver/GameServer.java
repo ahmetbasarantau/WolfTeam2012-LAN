@@ -502,7 +502,7 @@ public class GameServer extends Server {
             System.out.println("Start Round");
             short n = client.getRoomNumber();
             Room room = getRoomWithNumber(n);
-            if(room != null)
+            if(room != null && room.gameStarted)
             {
                 room.startRound();
                 StartRoundAck startRoundAck = new StartRoundAck(room.getRoundNumber(), room.getCurrentTime());
@@ -658,6 +658,7 @@ public class GameServer extends Server {
             
         }else if (msgId == ClientMsg.CS_FD_PLAYERDEAD_REQ)
         {
+            if (buffer == null || buffer.length < (ServerConfig.CLIENT_2012 ? 8 : 10)) return;
             PlayerDeadAck playerDeadAck = new PlayerDeadAck(buffer);
             Room room = getRoomWithNumber(client.getRoomNumber());
             if(room != null)
@@ -666,13 +667,17 @@ public class GameServer extends Server {
             }
         }else if (msgId == ClientMsg.CS_FD_REVIVALUSER_REQ)
         {
-            RevivalAck revivalAck = new RevivalAck(buffer, client.getRoomTeam());
             Room room = getRoomWithNumber(client.getRoomNumber());
-            if(room != null)
-            {
-                room.userRevived(client);
-                room.write(revivalAck);
-                //client.write(revivalAck.getData(client.getSeqNum()), revivalAck.getSize());
+            if (room != null && buffer != null && buffer.length >= 2) {
+                int targetSlot = buffer[0] & 255;
+                if (ServerConfig.CLIENT_2012 && (buffer[1] & 255) != client.getRoomSlot()) return;
+                Client target = targetSlot < room.users.length ? room.users[targetSlot] : null;
+                if (room.gameStarted && room.roundStarted && target != null && target != client
+                        && target.getRoomTeam() == client.getRoomTeam()
+                        && !room.deadList.contains(client) && room.deadList.contains(target)) {
+                    room.userRevived(target);
+                    room.write(new RevivalAck(target, client));
+                }
             }
         }else if (msgId == ClientMsg.CS_FD_PLANTBOMB_REQ)
         {
@@ -1550,6 +1555,7 @@ public class GameServer extends Server {
         byte nUsers;
         boolean isOpen;
         boolean gameStarted;
+        int matchGeneration;
         boolean roundStarted;
         Client users[];
         byte roomMaster;
@@ -1559,6 +1565,7 @@ public class GameServer extends Server {
         short redScore, blueScore;
         long roundTime, plantTime;
         ArrayList<Client> deadList;
+        final java.util.Map<Client,Long> lastDeathNanos = new java.util.HashMap<Client,Long>();
         java.util.HashSet<Integer> aiSlots = new java.util.HashSet<Integer>();   // absolute slots held by AI
         /**
          * Pick the next EMPTY absolute slot for an AI bot.
@@ -1624,8 +1631,8 @@ public class GameServer extends Server {
             {
                 if (isDeathMatch()) {
                     if (redScore >= blueScore) {
-                        endRound((byte) 1, true);
-                    }else endRound((byte) 2, true);
+                        endRound((byte) 2, true);
+                    }else endRound((byte) 1, true);
                 }
                 
                 if (isIceHold() || isDestruction()) {
@@ -1996,6 +2003,7 @@ public class GameServer extends Server {
             if (!present) return; // Exit and socket-close may describe the same departure.
             byte team = user.getRoomTeam();
             deadList.remove(user);
+            lastDeathNanos.remove(user);
             for(int i = 0; i < users.length; i++)
                 if(users[i] == user)
                 {
@@ -2062,6 +2070,9 @@ public class GameServer extends Server {
             if(gameStarted == false)
             {
                 gameStarted = true;
+                matchGeneration++;
+                deadList.clear();
+                lastDeathNanos.clear();
                 redScore = 0;
                 blueScore = 0;
                 roundNumber = 1;
@@ -2081,6 +2092,9 @@ public class GameServer extends Server {
         
         public void startRound()
         {
+            if (!gameStarted || roundStarted) return;
+            deadList.clear();
+            lastDeathNanos.clear();
             roundTime = System.currentTimeMillis();
             roundStarted = true;
             for(int i = 0; i < 5; i++)
@@ -2102,103 +2116,84 @@ public class GameServer extends Server {
             room.write(endRoundAck);
             EndGameAck endGameAck = new EndGameAck();
             RestartRoundAck restartRoundAck = new RestartRoundAck();
-            boolean isEndGame = bEndGame;
-            deadList.clear();
-            if (isEndGame) {
-                endGame();
-            }
+            final boolean isEndGame = bEndGame;
+            final byte endedRoundNumber = roundNumber;
+            final int endedMatchGeneration = matchGeneration;
+            if (isEndGame) endGame();
             roundStarted = false;
-            new Timer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    if (!isEndGame) {
-                        roundStarted = true;
-                        room.write(restartRoundAck);
-                    } else {
-                        room.write(endGameAck);
-                        for (int i = 0; i < users.length; i++) {
-                            if (users[i] != null) {
-                                users[i].setRoomSlotStatus((byte)0);
+            Timer timer = new Timer(true);
+            timer.schedule(new TimerTask() {
+                @Override public void run() {
+                    synchronized (GameServer.this) {
+                        try {
+                            if (!rooms.contains(room) || roundNumber != endedRoundNumber
+                                    || matchGeneration != endedMatchGeneration) return;
+                            if (!isEndGame) {
+                                if (!gameStarted) return;
+                                startRound();
+                                room.write(restartRoundAck);
+                            } else {
+                                if (gameStarted) return;
+                                room.write(endGameAck);
+                                for (Client player : users) if (player != null) player.setRoomSlotStatus((byte)0);
                             }
-                        }
+                        } finally { timer.cancel(); }
                     }
                 }
             }, 10000);
         }
-        
-        public void playerDead(Client c, PlayerDeadAck playerDeadAck)
+
+        public void playerDead(Client victim, PlayerDeadAck event)
         {
-            Room room = this;
-            boolean bEndGame = false;
-            if(c != null)
-            {
-                if(c.roomTeam == 2)
-                {
-                    if (isDeathMatch()) {
-                        redScore++;
-                        if (redScore >= points) {
-                            endRound((byte)1, bEndGame);
-                        }
-                    }
-
-                    if (isIceHold() || isDestruction()) {
-                        deadList.add(c);
-                        if(isTeamDead(c.roomTeam))
-                        {
-                        redScore++;
-                        if (redScore >= wins)
-                            bEndGame = true;
-                        endRound((byte)1, bEndGame);
-                        }
-                    }
-
-                }
-                    
-                if (c.roomTeam == 1) {
-                    if (isDeathMatch()) {
-                        blueScore++;
-                        if (blueScore >= points) {
-                            endRound((byte)2, bEndGame);
-                        }
-                    }
-
-                    if (isIceHold() || isDestruction()) {
-                        deadList.add(c);
-                        if(isTeamDead(c.roomTeam))
-                        {
-                        blueScore++;
-                        if (blueScore >= wins)
-                            bEndGame = true;
-                        endRound((byte)2, bEndGame);
-                        }
-                    }
-                }
-            }
-            if (c == null) {
-                System.out.println("[DEATH] ignored: victim slot did not resolve");
+            if (!gameStarted || !roundStarted || victim == null) return;
+            int slot = victim.getRoomSlot();
+            if (slot < 0 || slot >= users.length || users[slot] != victim) return;
+            if (ServerConfig.CLIENT_2012 && (event.getReportedVictimSlot() & 255) != slot) {
+                System.out.println("[DEATH] ignored victim mismatch sender=" + slot
+                        + " reported=" + (event.getReportedVictimSlot() & 255));
                 return;
             }
-            playerDeadAck.setScore(room.getRedScore(), room.getBlueScore());
-            playerDeadAck.setSlot((byte)c.getRoomSlot());
-            room.write(playerDeadAck);
-            int killerSlot = playerDeadAck.getKillerSlot() & 0xff;
-            if (killerSlot >= users.length || users[killerSlot] == null) {
-                System.out.println("[DEATH] ignored DB stats: invalid killer slot=" + killerSlot);
-                return;
+            if (deadList.contains(victim)) return; // Elimination mode: dead until revived/new round.
+            long now = System.nanoTime();
+            Long previous = lastDeathNanos.get(victim);
+            // DM respawns happen in the peer engine, not through a verified TCP
+            // respawn request. Only suppress immediate repeats here; do not keep
+            // a DM player permanently dead waiting for a nonexistent request.
+            if (previous != null && now - previous < 750_000_000L) return;
+            lastDeathNanos.put(victim, now);
+            if (isIceHold() || isDestruction()) deadList.add(victim);
+
+            int killerSlot = event.getKillerSlot() & 255;
+            Client killer = killerSlot < users.length ? users[killerSlot] : null;
+            boolean enemyKill = killer != null && killer != victim
+                    && (killer.getRoomTeam() == 1 || killer.getRoomTeam() == 2)
+                    && killer.getRoomTeam() != victim.getRoomTeam();
+            byte winner = 0;
+            boolean endMatch = false;
+            if (isDeathMatch() && enemyKill) {
+                winner = killer.getRoomTeam(); // 1 = BLUE, 2 = RED.
+                if (winner == 2) redScore++; else blueScore++;
+                endMatch = (winner == 2 ? redScore : blueScore) >= (points & 255);
+                if (!endMatch) winner = 0;
+            } else if ((isIceHold() || isDestruction()) && isTeamDead(victim.getRoomTeam())) {
+                winner = (byte)(victim.getRoomTeam() == 1 ? 2 : 1);
+                if (winner == 2) redScore++; else blueScore++;
+                endMatch = (winner == 2 ? redScore : blueScore) >= (wins & 255);
             }
-            int killer_id = users[killerSlot].getUserId();
-            int dead_id = c.getUserId();
-            // Synthetic AI clients have user_id=0. Never feed those IDs to
-            // foreign-keyed kill_log/users updates.
-            if (killer_id > 0 && dead_id > 0) {
-                Users userDb = new Users();
-                userDb.registerKill(killer_id, dead_id);
-            } else {
-                System.out.println("[DEATH] AI event: killerId=" + killer_id + " victimId=" + dead_id
-                        + " (score broadcast only, no account DB update)");
+            event.setScore(redScore, blueScore);
+            event.setSlot((byte)slot);
+            write(event); // Notify every peer before sending round/match-end.
+            System.out.println("[DEATH] victim=" + slot + " killer=" + killerSlot
+                    + " enemyKill=" + enemyKill + " red=" + redScore + " blue=" + blueScore);
+            if (victim.getUserId() > 0) {
+                Users db = new Users();
+                if (enemyKill && killer.getUserId() > 0)
+                    db.registerKill(killer.getUserId(), victim.getUserId());
+                else db.registerDeath(victim.getUserId());
             }
+            if (winner != 0) endRound(winner, endMatch);
         }
-        
+
         public void plantBomb()
         {
             plantTime = System.currentTimeMillis();
@@ -2456,6 +2451,7 @@ public class GameServer extends Server {
         }
         public void userRevived(Client c) {
             deadList.remove(c);
+            lastDeathNanos.remove(c);
         }
     }
     @Override

@@ -417,10 +417,29 @@ elseif ($req === 'kill') {
     $victim_id = intval($_GET['id']    ?? 0);
     $killer_id = intval($_GET['value'] ?? 0);
 
-    $pdo->prepare("INSERT INTO kill_log (killer_id, victim_id) VALUES (?,?)")->execute([$killer_id, $victim_id]);
-    $pdo->prepare("UPDATE users SET kill=kill+1 WHERE id=?")->execute([$killer_id]);
-    $pdo->prepare("UPDATE users SET death=death+1 WHERE id=?")->execute([$victim_id]);
-    echo '1';
+    if ($victim_id <= 0 || $killer_id <= 0 || $victim_id === $killer_id) {
+        echo '0';
+    } else {
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("INSERT INTO kill_log (killer_id, victim_id) VALUES (?,?)")->execute([$killer_id, $victim_id]);
+            $pdo->prepare("UPDATE users SET kill=kill+1 WHERE id=?")->execute([$killer_id]);
+            $pdo->prepare("UPDATE users SET death=death+1 WHERE id=?")->execute([$victim_id]);
+            $pdo->commit();
+            echo '1';
+        } catch (Throwable $error) {
+            $pdo->rollBack();
+            throw $error;
+        }
+    }
+}
+elseif ($req === 'death') {
+    $victim_id = intval($_GET['id'] ?? 0);
+    if ($victim_id <= 0) { echo '0'; }
+    else {
+        $pdo->prepare("UPDATE users SET death=death+1 WHERE id=?")->execute([$victim_id]);
+        echo '1';
+    }
 }
 
 // --------------------------------------------------

@@ -293,6 +293,10 @@ public class Users extends DatabaseConnection {
         return equips;
     }
     
+    public void registerDeath(int victimId) {
+        getResponse(weburl + "?req=death&id=" + victimId);
+    }
+
     public void registerKill(int killer_id, int dead_id) {
         String web = weburl + "?req=kill&id=" + dead_id + "&value=" + killer_id;
 
