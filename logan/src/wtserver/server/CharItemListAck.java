@@ -63,6 +63,7 @@ public class CharItemListAck extends ServerMsg {
         }
         ArrayList<Users.Item> chars = new ArrayList<Users.Item>(charsByCode.values());
         int nChars = chars.size();
+        boolean compactPermanentDates = 9 + 25 * nChars > wtserver.BrokerCrypto.MAX_PAYLOAD_BYTES;
 
         // Header: 00 01 00 00 00 [nChars] 00 00 00  (9 bytes)
         addByte((byte) 0);
@@ -76,8 +77,10 @@ public class CharItemListAck extends ServerMsg {
             int code = chars.get(i).id;
             addInteger(2000000000 + code);   // unique (4)
             addShort((short) code);          // item code (2)
-            addByte((byte) 0x0E);            // length prefix for the 14-char date
-            addAsciiString(sanitizeExpiry(chars.get(i).expiry)); // date (14)
+            String expiry = sanitizeExpiry(chars.get(i).expiry);
+            String wireExpiry = compactPermanentDates && "20991231235959".equals(expiry) ? "" : expiry;
+            addByte((byte) wireExpiry.length());
+            addAsciiString(wireExpiry);
             addShort((short) 0xFFFF);        // trailing marker (matches working template)
             addShort((short) 0x0000);
         }

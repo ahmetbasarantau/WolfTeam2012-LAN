@@ -22,6 +22,8 @@ import javax.crypto.spec.SecretKeySpec;
  *     *** PROVISIONAL — not yet round-trip-validated on a real multi-block frame. ***
  */
 public final class BrokerCrypto {
+    public static final int MAX_PAYLOAD_BLOCKS = 255;
+    public static final int MAX_PAYLOAD_BYTES = MAX_PAYLOAD_BLOCKS * 16;
     private static final int[] P = {
         0x0bda4b45, 0x793bb343, 0x0be8593b, 0x815cd250, 0x248bf109, 0xd615fbf1, 0x75bd27a8, 0x95a26650,
         0x103bd1e8, 0xc616a0e9, 0x0d5cb4fd, 0x0465c1e0, 0xcc0dbfb5, 0x77ea7d37, 0x7d5a65df, 0x869ea42a,
@@ -238,6 +240,11 @@ public final class BrokerCrypto {
     /* ---- whole frame ---- */
     /** plaintext frame (8-byte header + payload) -> wire bytes */
     public static byte[] encodeFrame(byte[] plain){
+        if (plain == null || plain.length < 8)
+            throw new IllegalArgumentException("A frame must contain an eight-byte header");
+        if (plain.length - 8 > MAX_PAYLOAD_BYTES)
+            throw new IllegalArgumentException("Frame 0x" + Integer.toHexString(msgId(plain))
+                    + " exceeds the native 255-block payload limit: " + (plain.length - 8));
         // HEADER NORMALIZATION (lets b6ooy's STOCK acks work unchanged):
         // Stock getData() builds the header in b6ooy's format ([5:6]=pSize). The REAL client
         // wants [5]=random, [6]=blockCount. We keep [0]=random,[1:2]=msgId,[3:4]=seq from

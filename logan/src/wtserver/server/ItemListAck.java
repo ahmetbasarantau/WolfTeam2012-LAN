@@ -74,6 +74,11 @@ public class ItemListAck extends ServerMsg {
 
         ArrayList<Users.Item> weapons = new ArrayList<Users.Item>(weaponsByCode.values());
         int nItems = weapons.size();
+        if (nItems > 255) throw new IllegalStateException("Native item count cannot exceed 255");
+        // The native reader accepts a length-prefixed expiry (including length
+        // zero for permanent records). Compact only oversized snapshots: retain
+        // every item, its flags and quantity, and keep timed expiries unchanged.
+        boolean compactPermanentDates = 2 + 33 * nItems > wtserver.BrokerCrypto.MAX_PAYLOAD_BYTES;
         addByte((byte) nItems);
         size += 2;
 
@@ -87,11 +92,12 @@ public class ItemListAck extends ServerMsg {
             addShort((short) 0);
             addShort((short) 0);
             addShort((short) 0);
-            addByte((byte) 0xE);
             // Expiry as a 14-char date string. For 'permanent' (or any non-date value) fall back to a
             // fixed valid timestamp so the field is always exactly 14 chars (the client reads 0xE bytes).
             String expiry = sanitizeExpiry(weapons.get(i).expiry);
-            addAsciiString(expiry);
+            String wireExpiry = compactPermanentDates && "20991231235959".equals(expiry) ? "" : expiry;
+            addByte((byte) wireExpiry.length());
+            addAsciiString(wireExpiry);
             // Timed records use this field as remaining days. Permanent
             // consumables use it as quantity. Sending one for every record
             // caused correctly stored 30/7-day purchases to display as 1 day.
@@ -106,6 +112,9 @@ public class ItemListAck extends ServerMsg {
         }
 
         size = (short) buffer.position();
+        if (compactPermanentDates)
+            System.out.println("[ITEMLIST] user=" + user_id + " count=" + nItems
+                    + " compactPermanentDates=true payloadBytes=" + (size - 8));
 
         if((size - 8) % 16 > 0)
         {
