@@ -26,8 +26,6 @@ network-policy.json
 network-policy.json.tmp
 Profiles/
 local_panel/
-inventory_manager.py
-envanter_yoneticisi.bat
 
 # Original client/game data and local installation files
 *.xfs
@@ -47,3 +45,12 @@ envanter_yoneticisi.bat
 *.png
 *.jpg
 *.bak
+
+# Generated local catalog files and previews
+/logan/web/wolfteam/asset_catalog.json
+/logan/web/wolfteam/client_bundles.json
+/logan/web/wolfteam/tattoo_textures.json
+/logan/web/wolfteam/previews/
+
+
+

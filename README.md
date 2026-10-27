@@ -1,40 +1,71 @@
-# WolfTeam 2012 LAN
+# WolfTeam 2012 LAN yaması
 
-Windows launcher and local LAN server for playing the September 2012 Softnyx client with friends over a home LAN or Radmin VPN.
+Bu depo, 2012 istemcisiyle ev ağı veya Radmin VPN üzerinden LAN oyunu kurmaya yarayan yama kaynaklarını, yerel sunucuyu ve envanter yöneticisini içerir.
 
-## Contents
+## Oyun dosyalarını edinme
 
-This is the patch source repository: launcher scripts, LAN discovery and server code, SQL migrations, and the Direct3D compatibility shim. It does **not** contain the commercial WolfTeam client, its game data, locally saved accounts, databases, logs, or the private inventory/visual tools.
+Bu depoda WolfTeam istemcisi, haritalar, sesler veya XFS arşivleri bulunmaz. Eski WolfTeam Türkiye dosyaları için [Archive.org arşiv sayfasını açın](https://archive.org/details/wolfteamturkiye). Sayfada listelenen dosyalardan birini indirip arşivdeki yönergeye göre çıkarın. Kurulum klasöründe en az `Wolfteam.exe`, `wolf.xfs` ve `sound.xfs` bulunmalı. Arşivdeki istemci sürümünün 2012 Softnyx istemcisiyle uyumlu olduğunu kontrol edin.
 
-You need a separately obtained copy of the 2012 client that you are entitled to use. This repository is source code, not a ready-to-play game installer.
+## Adım adım kurulum
 
-## Getting the latest patch source
+### 1. Yama kaynaklarını indirin
 
-- If you cloned this repository, run `git pull` in the repository folder.
-- Without Git, use **Code → Download ZIP** on GitHub to get the latest source snapshot.
+GitHub’da **Code → Download ZIP** seçin. ZIP’i çıkarın ve içindeki dosyaları oyunun kurulu olduğu klasöre birleştirin. Kaynak kod yeni oyun dosyalarının üzerine yazmaz; repoda oyun istemcisi bulunmaz.
 
-Build and apply the patch source beside your own compatible client. The full game client remains on your computer and is not part of this repository.
+Git kullanıyorsanız güncel yamayı almak için yama klasöründe `git pull` çalıştırın.
 
-## Playing with friends
+### 2. Gerekli araçları kurun
 
-1. Install the same 2012 client version on both computers.
-2. Connect both computers to the same Radmin VPN network (or the same home LAN).
-3. Apply the current patch source to the compatible client installation.
-4. Start `WolfteamBaslat.bat`. Choose **1** on the host computer. Once its server is ready, friends choose **2** and select the host from discovery.
-5. The host computer keeps the local account and inventory database in `.runtime/logan/data`.
+- Windows PowerShell 5 veya PowerShell 7
+- Python 3 ve Tkinter
+- Java JDK 17 veya daha yenisi
+- Direct3D yaması için Windows .NET Framework derleyicileri (`csc.exe` ve `ilasm.exe`)
 
-The first launch may ask Windows for firewall permission so other players on the selected private network can connect.
+Envanter yöneticisinin Python paketini kurun:
 
-## Building from source
+```powershell
+python -m pip install -r requirements-inventory.txt
+```
 
-Use Windows PowerShell and a 32-bit-compatible .NET Framework toolchain for the Direct3D shim. Java and the local PHP/MariaDB runtime are prepared by the scripts under `logan/`. Build outputs and downloaded runtimes are local and ignored by Git. Place the source/update files beside your own compatible client before launching it.
+### 3. Yerel sunucuyu hazırlayın
 
-`logan/tools/` can generate the local item catalogs from the owner's own 2012 client data. Generated catalogs are intentionally excluded from this repository.
+Oyun klasöründe PowerShell açın ve çalıştırın:
 
-## Privacy
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\logan\setup.ps1
+.\compatibility\build.ps1 -Install
+```
 
-Player names, account data, inventory, local IP configuration, captures, and runtime logs stay on the host computer. Do not commit `.runtime`, `Profiles`, run logs, generated network policy, or game-client files.
+Kurulum, PHP ve MariaDB çalışma zamanlarını `.runtime` altına indirir, Java sunucusunu derler ve Direct3D uyumluluk yamasını oyun klasörüne kurar.
 
-## License
+### 4. Yerel eşya kataloğunu oluşturun
 
-Project source is MIT-licensed. The imported Logan server code retains its upstream MIT notice in `logan/LICENSE`. WolfTeam is a Softnyx trademark; this project is an independent community LAN compatibility project and is not affiliated with Softnyx.
+Envanter yöneticisi ve set içerikleri, oyunun kendi `wolf.xfs` dosyasından yerel katalog üretir. Aynı PowerShell penceresinde:
+
+```powershell
+python .\logan\tools\import_asset_catalog.py .\wolf.xfs .\logan\web\wolfteam\asset_catalog.json
+python .\logan\tools\import_client_bundles.py .\wolf.xfs .\logan\web\wolfteam\client_bundles.json
+```
+
+Kataloglar ve önizleme dosyaları yerelde oluşturulur; GitHub’a gönderilmez.
+
+### 5. Oyunu başlatın
+
+`WolfteamBaslat.bat` dosyasını çalıştırın. Sunucuyu açacak bilgisayarda **1**, arkadaşınızın bilgisayarında **2** seçin. İki bilgisayar aynı Radmin VPN ağına veya aynı ev ağına bağlı olmalı. İlk çalıştırmada Windows Güvenlik Duvarı izni istenebilir.
+
+Yerel hesaplar, envanter ve oyun veritabanı sunucu bilgisayarında `.runtime\logan\data` altında tutulur. Bu klasörü paylaşmayın; yedeklemek isterseniz oyun kapalıyken yedekleyin.
+
+## Envanter yöneticisi
+
+Oyuncu hesabı oluşturulduktan ve yerel sunucu hazırlandıktan sonra `envanter_yoneticisi.bat` dosyasını açın. Listeden hesabı seçip yerel `wolf.xfs` dosyasından üretilen eşya kataloğunda arama yapabilir ve eşyaları hesaba ekleyip kaldırabilirsiniz. Setler içerdikleri eşyalarla birlikte eklenir.
+
+Yönetici yalnızca bu bilgisayardaki yerel sunucuya (`127.0.0.1`) bağlanır. Oyun hesabı/veritabanı ya da envanter yöneticisi dosyası internete gönderilmez. Oyuncuların hesaplarına ve eşyalarına erişimi olan bir yönetim aracıdır; arkadaşlara dağıtacağınız paketlere eklemeyin.
+
+## Güncelleme ve içerik kapsamı
+
+Bu depo yama **kaynak kodudur**, hazır oyun paketi değildir. Son kaynak GitHub’daki `main` dalındadır; Git kullanmayanlar **Code → Download ZIP** ile kaynak anlık görüntüsünü alabilir. Depoda oyun varlıkları, kullanıcı verisi, çalışma günlükleri veya kişisel ağ yapılandırması bulunmaz.
+
+## Lisanslar
+
+Proje kaynakları MIT lisanslıdır. Logan sunucu kodunun özgün MIT lisansı `logan/LICENSE` dosyasındadır. WolfTeam ve Softnyx ilgili hak sahiplerinin markalarıdır; proje bağımsız topluluk çalışmasıdır.

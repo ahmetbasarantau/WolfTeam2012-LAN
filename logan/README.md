@@ -1,5 +1,5 @@
-# Logan WTServer notes
+# Logan WTServer notları
 
-The Java gameplay server under `src/wtserver` is imported from the Logan WTServer project. Its MIT license notice is preserved in `LICENSE`.
+`src/wtserver` altındaki Java oyun sunucusu Logan WTServer projesinden alınmıştır. MIT lisansının özgün bildirimi `LICENSE` dosyasında tutulur.
 
-Build and runtime setup are described in the root README and the scripts in this directory. The commercial game client and generated item catalogs are intentionally kept outside the public source repository. Generate local catalogs from a compatible client using the scripts in `tools/` when needed.
+Derleme ve yerel çalışma zamanı adımları kök dizindeki Türkçe README’de ve bu klasördeki betiklerde açıklanır. Ticari oyun istemcisi ve istemciden üretilen eşya katalogları public depoda tutulmaz. İhtiyaç duyulduğunda `tools/` altındaki betiklerle yerel istemciden katalog oluşturun.
