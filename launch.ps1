@@ -9,6 +9,7 @@ param(
 $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 . (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
+Write-Host 'WolfTeam LAN - Baslatici 2026.10.27.4'
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -132,6 +133,24 @@ function Get-LanAddress {
     foreach($config in $configs){foreach($address in $config.IPv4Address){if($address.IPAddress -match '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)'){return $address}}}
     return $null
 }
+function ConvertFrom-LanDiscoveryOutput([string[]]$Lines) {
+    # Read individual native-process records. Avoid JSON collection wrappers
+    # and implicit array-to-string conversion in Windows PowerShell.
+    foreach($line in $Lines){
+        $fields=([string]$line).Split(@([char]9),5)
+        if($fields.Count -ne 5 -or $fields[0] -ne 'WTLAN1'){continue}
+        $address=$null
+        $port=0
+        $channels=0
+        if(-not [Net.IPAddress]::TryParse($fields[1],[ref]$address) -or
+            $address.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork){continue}
+        if(-not [int]::TryParse($fields[2],[ref]$port) -or $port -lt 1 -or $port -gt 65535){continue}
+        if(-not [int]::TryParse($fields[3],[ref]$channels) -or $channels -lt 0){continue}
+        $serverName=$fields[4].Trim()
+        if(-not $serverName){$serverName='WolfTeam LAN sunucusu'}
+        [pscustomobject]@{ip=$address.ToString();name=$serverName;channels=$channels;port=$port}
+    }
+}
 $menuHost=$false
 if(-not $Mode){
     Write-Host ''
@@ -148,26 +167,14 @@ if(-not $Mode){
         $Mode='Join'
         while($true){
             Write-Host 'Ayni agdaki WolfTeam sunuculari araniyor...'
-            $foundLines=@(& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --json)
-            if($LASTEXITCODE -ne 0){throw 'LAN taramasi basarisiz oldu. Oyuncu adi ve ag baglantisini kontrol et.'}
-            $servers=@()
-            $foundJson=[string]::Join([Environment]::NewLine,[string[]]$foundLines)
-            $discovered=@()
-            if(-not [string]::IsNullOrWhiteSpace($foundJson)){
-                try{$discovered=@(ConvertFrom-Json -InputObject $foundJson -ErrorAction Stop)}
-                catch{throw "LAN sunucu listesi okunamadi. R ile yeniden tara. Ayrinti: $($_.Exception.Message)"}
+            $foundLines=@(& $python (Join-Path $PSScriptRoot 'server/lan_discovery.py') --launcher)
+            if($LASTEXITCODE -ne 0){throw 'LAN taramasi tamamlanamadi. Yamanin launch.ps1 dosyasini ve server klasorunu birlikte guncelleyin; yukaridaki hata ayrintisini kurucuya iletin.'}
+            $servers=@(ConvertFrom-LanDiscoveryOutput -Lines $foundLines)
+            if($foundLines.Count -and -not $servers.Count){
+                $responseFile=Join-Path $PSScriptRoot '.runtime/lan-discovery-last.txt'
+                $foundLines | Set-Content -LiteralPath $responseFile -Encoding UTF8
+                throw "Sunucu yaniti okunamadi. Yama dosyalarini birlikte guncelleyin. Kayit: $responseFile"
             }
-            $servers=@(foreach($server in $discovered){
-                $candidate=[string]$server.ip
-                $parsedServerIP=$null
-                if([Net.IPAddress]::TryParse($candidate,[ref]$parsedServerIP) -and
-                    $parsedServerIP.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork){
-                    $serverName=[string]$server.name
-                    if([string]::IsNullOrWhiteSpace($serverName)){$serverName='WolfTeam LAN sunucusu'}
-                    $channelCount=if($null -ne $server.channels){[string]$server.channels}else{'?'}
-                    [pscustomobject]@{ip=$parsedServerIP.ToString();name=$serverName;channels=$channelCount;port=$server.port}
-                }
-            })
             if($servers.Count){
                 for($i=0;$i -lt $servers.Count;$i++){
                     Write-Host (" [{0}] {1} - {2} kanal ({3})" -f ($i+1),$servers[$i].name,$servers[$i].channels,$servers[$i].ip)
@@ -189,8 +196,7 @@ if(-not $Mode){
                 $ServerIP=$selectedIP.ToString()
                 break
             }
-            if($discovered.Count){Write-Host 'Sunucu bulundu ancak gecerli IPv4 adresi gelmedi. Radmin baglantisini kontrol edip yeniden tara.' -ForegroundColor Yellow}
-            else{Write-Host 'Sunucu bulunamadi. Kurucu sunucuyu baslatsin; sonra R ile yeniden tara.' -ForegroundColor Yellow}
+            Write-Host 'Sunucu bulunamadi. Kurucu sunucuyu baslatsin ve ayni Radmin agina baglanin; sonra R ile yeniden tara.' -ForegroundColor Yellow
             $retry=Read-Host '[R] Yeniden tara  [Q] Cik'
             if($retry -match '^[Qq]$'){exit 0}
         }

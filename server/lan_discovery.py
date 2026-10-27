@@ -243,10 +243,20 @@ def discover_servers(port=DEFAULT_PORT):
 def main():
     parser = argparse.ArgumentParser(description="WolfTeam LAN Server Discovery")
     parser.add_argument("--json", action="store_true", help="Output JSON array")
+    parser.add_argument("--launcher", action="store_true", help="Output versioned tab-separated launcher records")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Broker port to scan")
     args = parser.parse_args()
 
     servers = discover_servers(port=args.port)
+
+    if args.launcher:
+        for server in servers:
+            address = ipaddress.ip_address(server['ip'])
+            if address.version != 4:
+                continue
+            name = ' '.join(str(server.get('name') or 'WolfTeam LAN Sunucusu').split())
+            print(f"WTLAN1\t{address}\t{int(server['port'])}\t{int(server['channels'])}\t{name}")
+        return
 
     if args.json:
         print(json.dumps(servers, ensure_ascii=False))
