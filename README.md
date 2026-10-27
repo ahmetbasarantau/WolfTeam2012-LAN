@@ -20,6 +20,8 @@ Tüm oyuncular Radmin VPN'i açıp aynı Radmin ağına katılsın. Aynı evdeki
 
 Başlatıcı Windows'un Radmin kartında bilinen eşleri doğrudan sorgular ve WolfTeam sunucu protokolünü doğrular. Broadcast yanıtları da keşfe yardımcı olur. IP adresi yazmanız veya bağlantı dosyası paylaşmanız gerekmez. Fiziksel Wi-Fi/Ethernet ağı taranmaz.
 
+Oyuncu adında Türkçe harfler kullanılabilir; alt çizgi veya tire zorunlu değildir. Eski istemcinin ad alanı en fazla 12 karakterdir.
+
 Başlatıcı, oyunun güncelleme adresini her oturumda seçilen LAN/Radmin sunucusuna yönlendirir ve oyun kapandıktan sonra dosyanın önceki içeriğini geri yükler. Arkadaş bilgisayarında `127.0.0.1` kendi bilgisayarını gösterdiğinden bu yönlendirme güncelleme denetiminin sunucuya ulaşmasını sağlar.
 
 Hata olursa kurulum penceresini kapatmadan son ekrandaki mesajın fotoğrafını oyun kurucusuna gönderin.

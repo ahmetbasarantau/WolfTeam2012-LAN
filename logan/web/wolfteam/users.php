@@ -85,7 +85,7 @@ if ($req === 'login') {
     // ENCRYPTED password blob (not plaintext). The launcher (api/login.php) handles
     // plaintext authentication separately. For the game server, username-only lookup
     // is the expected behaviour for this protocol version.
-    if (!preg_match('/^[A-Za-z0-9_.\[\]-]{1,12}$/', $name)) { echo '-1'; exit; }
+    if (trim($name) === '' || !preg_match('/\A[^\x00-\x1f\x7f;"]{1,12}\z/u', $name)) { echo '-1'; exit; }
     // LAN identity: first login creates the remembered local profile.
     $pdo->beginTransaction();
     $create = $pdo->prepare("INSERT IGNORE INTO users(username,password,callsign,level,gp,gold,wc,cash) VALUES (?,'',?,61,500000,10000000,10000000,10000000)");

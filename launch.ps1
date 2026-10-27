@@ -10,7 +10,7 @@ $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $PSScriptRoot
 . (Join-Path $PSScriptRoot 'server/firewall_validation.ps1')
 . (Join-Path $PSScriptRoot 'server/radmin_support.ps1')
-Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.7'
+Write-Host 'WolfTeam Radmin - Baslatici 2026.10.27.8'
 $runtimePython=Join-Path $PSScriptRoot '.runtime/python/python.exe'
 $systemPython=$null
 $python=$null
@@ -44,6 +44,14 @@ if(-not $python -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.runtime/
 if(-not $python){throw 'Python calisma zamani hazir degil. Once Kurulum.bat dosyasini calistirin.'}
 $savedNickFile=Join-Path $PSScriptRoot '.runtime/player-name.txt'
 $accountCacheFile=Join-Path $PSScriptRoot '.runtime/player-accounts.json'
+function Test-LocalPlayerName([string]$Value) {
+    if([string]::IsNullOrWhiteSpace($Value) -or $Value.Length -gt 12 -or $Value -match '[\p{Cc};"]'){return $false}
+    try{
+        $encoding=[Text.Encoding]::GetEncoding(1254,[Text.EncoderExceptionFallback]::new(),[Text.DecoderExceptionFallback]::new())
+        $bytes=$encoding.GetBytes($Value)
+        return $bytes.Length -le 12
+    }catch{return $false}
+}
 function Get-LocalProfileNames {
     $names=[Collections.Generic.List[string]]::new()
     $lookupRun=$null
@@ -66,7 +74,7 @@ function Get-LocalProfileNames {
         if($users){
             foreach($user in $users){
                 $name=[string]$user.username
-                if($name -match '^[A-Za-z0-9_.\[\]-]{1,12}$' -and -not $names.Contains($name)){$names.Add($name)}
+                if((Test-LocalPlayerName $name) -and -not $names.Contains($name)){$names.Add($name)}
             }
         }
     } catch {
@@ -79,12 +87,12 @@ function Get-LocalProfileNames {
     }
     if(Test-Path -LiteralPath $accountCacheFile){
         try { foreach($name in (Get-Content -LiteralPath $accountCacheFile -Raw | ConvertFrom-Json)){
-            if($name -is [string] -and $name -match '^[A-Za-z0-9_.\[\]-]{1,12}$' -and -not $names.Contains($name)){$names.Add($name)}
+            if($name -is [string] -and (Test-LocalPlayerName $name) -and -not $names.Contains($name)){$names.Add($name)}
         }} catch {}
     }
     if(Test-Path -LiteralPath $savedNickFile){
         $saved=(Get-Content -LiteralPath $savedNickFile -Raw).Trim()
-        if($saved -match '^[A-Za-z0-9_.\[\]-]{1,12}$' -and -not $names.Contains($saved)){$names.Insert(0,$saved)}
+        if((Test-LocalPlayerName $saved) -and -not $names.Contains($saved)){$names.Insert(0,$saved)}
     }
     return @($names | Sort-Object -Unique)
 }
@@ -101,9 +109,9 @@ function Select-LocalProfile {
         if($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $profiles.Count){return $profiles[[int]$choice-1]}
         if($choice -eq [string]$newChoice){
             do {
-                $newName=Read-Host 'Yeni yerel oyuncu adi (1-12 karakter)'
-                if($newName -notmatch '^[A-Za-z0-9_.\[\]-]{1,12}$'){
-                    Write-Host 'Harf, rakam, nokta, alt cizgi veya tire kullan; en fazla 12 karakter.' -ForegroundColor Yellow
+                $newName=(Read-Host 'Oyuncu adin').Trim()
+                if(-not (Test-LocalPlayerName $newName)){
+                    Write-Host 'Bu ad oyunun 12 karakterlik ad alanina sigmiyor veya desteklenmeyen bir karakter iceriyor.' -ForegroundColor Yellow
                     $newName=$null
                 } elseif($profiles -contains $newName){
                     Write-Host 'Bu ad zaten listede. Mevcut hesabi sec.' -ForegroundColor Yellow
@@ -116,9 +124,10 @@ function Select-LocalProfile {
     } while($true)
 }
 if(-not $PSBoundParameters.ContainsKey('Nick')){$Nick=Select-LocalProfile}
-if($Nick -notmatch '^[A-Za-z0-9_.\[\]-]{1,12}$'){throw 'Oyuncu adi 1-12 karakter olmali.'}
+$Nick=$Nick.Trim()
+if(-not (Test-LocalPlayerName $Nick)){throw 'Oyuncu adi bos veya oyunun ad alanina uygun degil.'}
 New-Item -ItemType Directory -Path (Split-Path $savedNickFile) -Force | Out-Null
-Set-Content -LiteralPath $savedNickFile -Value $Nick -NoNewline
+Set-Content -LiteralPath $savedNickFile -Value $Nick -NoNewline -Encoding UTF8
 $cache=@()
 if(Test-Path -LiteralPath $accountCacheFile){try{$cache=@(Get-Content -LiteralPath $accountCacheFile -Raw | ConvertFrom-Json)}catch{}}
 if($cache -notcontains $Nick){$cache+= $Nick}

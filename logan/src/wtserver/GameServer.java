@@ -168,13 +168,10 @@ public class GameServer extends Server {
             LoginAck loginAck = new LoginAck(buffer);
             client.setLoginName(loginAck.getLoginName());
             System.out.println("Login Name " + loginAck.getLoginName());
-            System.out.println("Login Password " + loginAck.getLoginPassword());
             byte errorcode = 0;
             Users users = new Users();
-            // Use the password the CLIENT actually sent (loginAck.getLoginPassword()), not a hardcoded
-            // value. The client transmits the real credentials in the 0x1300 payload; we parse them
-            // correctly (LoginAck off-by-one fixed) and authenticate against the DB with them.
-            // (No-bypass principle: real password check, not username-only lookup.)
+            // Passwordless Radmin profiles are resolved by the canonical local
+            // player name. The client token is opaque and is never a password.
             int user_id = users.getLogin(loginAck.getLoginName(), loginAck.getLoginPassword());
             System.out.println("IP : " + client.getIp() + " User DB ID " + user_id);
             if(user_id <= 0)

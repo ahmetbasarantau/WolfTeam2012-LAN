@@ -3,6 +3,7 @@ package wtserver;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
@@ -26,7 +27,7 @@ public final class Packet2012 {
     public Packet2012 u16(int value) { b.putShort((short)value); return this; }
     public Packet2012 u32(int value) { b.putInt(value); return this; }
     private Packet2012 wide(String value) { byte[] s=value.getBytes(StandardCharsets.UTF_16LE); u8(s.length); b.put(s); return this; }
-    private Packet2012 ascii(String value) { byte[] s=value.getBytes(StandardCharsets.US_ASCII); u8(s.length); b.put(s); return this; }
+    private Packet2012 ascii(String value) { byte[] s=value.getBytes(Charset.forName("windows-1254")); u8(s.length); b.put(s); return this; }
     private Packet2012 endpoint(int ip, int port) { u32(ip); u8(port >>> 8); u8(port); return this; }
     public byte[] finish() { return Arrays.copyOf(b.array(), b.position()); }
     public static byte[] status(int id, short seq, int status) { return new Packet2012(id,seq).u8(status).finish(); }

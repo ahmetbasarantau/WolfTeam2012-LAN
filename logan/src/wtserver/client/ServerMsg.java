@@ -9,6 +9,7 @@ package wtserver.client;
 
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 
 /**
  *
@@ -130,11 +131,7 @@ public class ServerMsg {
     
     public void addAsciiString(String s)
     {
-        for(int i = 0; i < s.length(); i++)
-        {
-            char c = s.charAt(i);
-            buffer.put((byte) (c & 0xff));
-        }
+        buffer.put(s.getBytes(Charset.forName("windows-1254")));
     }
     
     public byte [] getData(short seqNum)

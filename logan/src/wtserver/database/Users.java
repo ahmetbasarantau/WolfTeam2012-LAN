@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 
 /**
  *
@@ -26,10 +29,12 @@ public class Users extends DatabaseConnection {
     
     public int getLogin(String user, String password)
     {
-        // NOTE: Password is intentionally NOT sent — the WolfTeam client sends an
-        // encrypted blob, not plaintext. users.php does username-only lookup for the
-        // game server; launcher auth is handled by api/login.php separately.
-        String web = weburl + "?req=login&name=" + user;
+        // Local Radmin accounts have no password. The client's opaque token is
+        // not plaintext; resolve the correctly decoded player name through the API.
+        if (user == null || user.isBlank() || user.length() > 12
+                || user.chars().anyMatch(c -> Character.isISOControl(c) || c == ';' || c == '"')
+                || !Charset.forName("windows-1254").newEncoder().canEncode(user)) return -1;
+        String web = weburl + "?req=login&name=" + URLEncoder.encode(user, StandardCharsets.UTF_8);
         
         String response = getResponse(web);
         

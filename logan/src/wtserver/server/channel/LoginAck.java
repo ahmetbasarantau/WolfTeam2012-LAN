@@ -8,6 +8,8 @@ package wtserver.server.channel;
 
 import wtserver.client.ServerMsg;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
 
 /**
@@ -69,25 +71,24 @@ public class LoginAck extends ServerMsg {
     public LoginAck(byte recv_buffer [])
     {
         buffer = ByteBuffer.allocate(512);
-        short b = recv_buffer[2];
-        for(int i = 0; i < b; i++)
-        {
-            char c = (char) recv_buffer[3 + i];
-            // hash1 - read but unused
-        }
-        short b1 = recv_buffer[3 + b];
-        for(int i = 0; i < b1; i++)
-        {
-            char c = (char) recv_buffer[4 + b + i];
-            loginName += c;
-        }
-        short b2 = recv_buffer[4 + b + b1];
-        for(int i = 0; i < b2; i++)
-        {
-            // OFF-BY-ONE FIX (TrackQ): password starts at 5+b+b1, mirroring the name at 4+b.
-            char c = (char) recv_buffer[5 + b + b1 + i];
-            loginPassword += c;
-        }
+        if (recv_buffer == null || recv_buffer.length < 4) return;
+        int hashLength = recv_buffer[2] & 0xff;
+        int nameLengthOffset = 3 + hashLength;
+        if (nameLengthOffset >= recv_buffer.length) return;
+        int nameLength = recv_buffer[nameLengthOffset] & 0xff;
+        int nameOffset = nameLengthOffset + 1;
+        int passwordLengthOffset = nameOffset + nameLength;
+        if (passwordLengthOffset >= recv_buffer.length) return;
+        int passwordLength = recv_buffer[passwordLengthOffset] & 0xff;
+        int passwordOffset = passwordLengthOffset + 1;
+        if (passwordLength > recv_buffer.length - passwordOffset) return;
+        // The Turkish 2012 client sends ANSI (Windows-1254), not signed Java
+        // chars or UTF-8. Preserve Turkish letters in the actual profile name.
+        loginName = new String(recv_buffer, nameOffset, nameLength,
+                               Charset.forName("windows-1254"));
+        // Preserve the opaque token bytes; local accounts do not use a password.
+        loginPassword = new String(recv_buffer, passwordOffset, passwordLength,
+                                   StandardCharsets.ISO_8859_1);
     }
 
     /** Supply the authenticated user's data so the ack carries a real callsign + stats. */
@@ -174,9 +175,7 @@ public class LoginAck extends ServerMsg {
     private static byte[] toAscii(String s)
     {
         if (s == null) return new byte[0];
-        byte[] out = new byte[s.length()];
-        for (int i = 0; i < s.length(); i++) out[i] = (byte) (s.charAt(i) & 0xff);
-        return out;
+        return s.getBytes(Charset.forName("windows-1254"));
     }
 
     public String getLoginName()
