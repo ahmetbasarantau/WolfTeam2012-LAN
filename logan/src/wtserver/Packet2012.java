@@ -19,6 +19,9 @@ import wtserver.server.CharacterSave2012;
  * The donor's 2013 roster has additional fields and cannot be sent unchanged.
  */
 public final class Packet2012 {
+    // Native CREATE writer 341cc6c6 uses 0/61 when no rank restriction is set.
+    private static final int MIN_ROOM_RANK = 0;
+    private static final int MAX_ROOM_RANK = 61;
     private final ByteBuffer b = ByteBuffer.allocate(16384).order(ByteOrder.LITTLE_ENDIAN);
     private Packet2012(int id, short sequence) {
         b.put((byte)0).putShort((short)id).putShort(sequence).putShort((short)0).put((byte)0);
@@ -132,13 +135,13 @@ public final class Packet2012 {
     public static byte[] rooms(short seq, ArrayList<GameServer.Room> rooms) {
         // Native 341fba10 reads a single u8 count immediately after status.
         // Each entry then has exactly three bytes before mode (lock/state/map),
-        // and capacity/current-player counts are the FINAL two entry bytes.
+        // and minimum/maximum RANK are the FINAL two entry bytes (not capacity).
         Packet2012 p=new Packet2012(0x1601,seq).u8(0).u8(rooms.size());
         for(GameServer.Room r:rooms) {
             p.u16(r.getRoomNumber()).wide(r.getRoomTitle()).u8(r.getRoomPassword().isEmpty()?0:1)
              .u8(r.gameStarted?1:0).u8(r.getMap()).u32(r.getMode()).u8(r.getWins())
              .u16(r.getTime()).u16(r.getPoints()&255).u8(0).u16(0)
-             .u8(0).u8(0).u8(0).u8(0).u8(0).u8(r.getCapacity()).u8(r.getNumberOfUsers());
+             .u8(0).u8(0).u8(0).u8(0).u8(0).u8(MIN_ROOM_RANK).u8(MAX_ROOM_RANK);
         }
         return p.finish();
     }
@@ -179,7 +182,7 @@ public final class Packet2012 {
             characterAppearance(p,blue,clothing.get(blue));
             p.u16(0).u8(1);
         }
-        return p.u8(0).u8(0).finish();
+        return p.u8(MIN_ROOM_RANK).u8(MAX_ROOM_RANK).finish();
     }
     private static void characterAppearance(Packet2012 p,int charId,int[] equipment) {
         // The first word selects the character template. Subsequent words

@@ -456,6 +456,12 @@ public class GameServer extends Server {
                         + " lowByte=0x" + Integer.toHexString(room.mode & 0xFF) + " (0x80=WolfHunt) Wolfhunt="
                         + room.isWolfhunt() + " AiDeathMatch=" + room.isAiDeathMatch());
                 room.roomCapacity = changeRuleAck.getCapacity();
+                if (ServerConfig.CLIENT_2012) {
+                    // Radmin rooms always allow every rank. Resend authoritative
+                    // room/list data after the client's rule-change acknowledgement.
+                    room.write(new RoomCharsAck());
+                    writeToChannel(new FieldListAck(rooms));
+                }
             }
         }else if (msgId == ClientMsg.CS_FD_STARTGAME_REQ) {
             System.out.println("Start Game");
