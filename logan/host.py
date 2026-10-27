@@ -130,18 +130,35 @@ def import_legacy():
 
 class UpdateHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *_):
+        # Do not log client IPs; record only the updater route and response below.
         pass
 
-    def do_GET(self):
-        if self.path.split('?')[0] not in ('/update.u', '/apex/wolfteam/psserver/web/update.u'):
+    def _serve_update(self, include_body):
+        path = self.path.split('?', 1)[0]
+        if path not in ('/update.u', '/apex/wolfteam/psserver/web/update.u'):
             self.send_error(404)
+            print(f'[UPDATE] {self.command} {path} -> 404', flush=True)
             return
-        data = (ROOT / 'avital' / 'update.u').read_bytes()
+        update_file = ROOT / 'avital' / 'update.u'
+        if not update_file.is_file():
+            self.send_error(500)
+            print(f'[UPDATE] {self.command} {path} -> 500 (update.u missing)', flush=True)
+            return
+        data = update_file.read_bytes()
         self.send_response(200)
         self.send_header('Content-Type', 'application/octet-stream')
         self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-store')
         self.end_headers()
-        self.wfile.write(data)
+        if include_body:
+            self.wfile.write(data)
+        print(f'[UPDATE] {self.command} {path} -> 200 ({len(data)} bytes)', flush=True)
+
+    def do_GET(self):
+        self._serve_update(include_body=True)
+
+    def do_HEAD(self):
+        self._serve_update(include_body=False)
 
 
 class Auxiliary(socketserver.BaseRequestHandler):
