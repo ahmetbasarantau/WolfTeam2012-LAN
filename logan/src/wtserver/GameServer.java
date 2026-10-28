@@ -1286,7 +1286,10 @@ public class GameServer extends Server {
 
     private void processUdp(DatagramPacket packet, DatagramSocket replySock)
     {
-        byte msg[] = packet.getData();
+        // DatagramPacket's backing buffer can be much larger than the received
+        // datagram. Protocol checks and echo replies must use only its payload.
+        byte msg[] = java.util.Arrays.copyOfRange(packet.getData(), packet.getOffset(), packet.getOffset() + packet.getLength());
+        if (msg.length == 0) return;
         // ---- UDP DIAGNOSTIC LOGGING ----
         // Dump the raw datagram + the session key the client sent, and compare it against every
         // stored TCP client's session key, so we can see EXACTLY why getClient() misses.
