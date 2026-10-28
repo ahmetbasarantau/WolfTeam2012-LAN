@@ -262,7 +262,7 @@ def main():
         # Additive, idempotent upgrades for existing profiles. No equipment or
         # character selections are deleted by these migrations.
         for migration in ('011_character_equipment.sql', '012_default_open_slots.sql',
-                          '013_repair_weapon_roles.sql'):
+                          '013_repair_weapon_roles.sql', '014_middle_rank.sql'):
             sql((ROOT / 'logan/sql/migrations' / migration).read_text(encoding='utf-8-sig'))
         verify_schema()
         php = RUNTIME / 'php' / 'php.exe'

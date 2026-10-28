@@ -88,7 +88,7 @@ if ($req === 'login') {
     if (trim($name) === '' || !preg_match('/\A[^\x00-\x1f\x7f;"]{1,12}\z/u', $name)) { echo '-1'; exit; }
     // LAN identity: first login creates the remembered local profile.
     $pdo->beginTransaction();
-    $create = $pdo->prepare("INSERT IGNORE INTO users(username,password,callsign,level,gp,gold,wc,cash) VALUES (?,'',?,61,500000,10000000,10000000,10000000)");
+    $create = $pdo->prepare("INSERT IGNORE INTO users(username,password,callsign,level,gp,gold,wc,cash) VALUES (?,'',?,31,500000,10000000,10000000,10000000)");
     $create->execute([$name, $name]);
     $isNew = $create->rowCount() > 0;
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username=?");

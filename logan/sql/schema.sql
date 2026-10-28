@@ -27,7 +27,7 @@ CREATE TABLE `users` (
     `username` VARCHAR(32) NOT NULL UNIQUE,
     `password` VARCHAR(64) NOT NULL,
     `callsign` VARCHAR(32) NOT NULL,
-    `level` INT DEFAULT 1,
+    `level` INT DEFAULT 31,
     `gp` INT DEFAULT 0,
     `gold` INT DEFAULT 0,
     `wc` INT DEFAULT 0,
@@ -153,7 +153,7 @@ CREATE TABLE `channels` (
 -- SEED DATA: Admin kullanıcı
 -- ============================================================================
 INSERT INTO `users` (`username`, `password`, `callsign`, `level`, `gp`, `gold`, `wc`, `cash`)
-VALUES ('admin', 'admin', 'Admin', 99, 999999, 999999, 999999, 999999);
+VALUES ('admin', 'admin', 'Admin', 31, 999999, 999999, 999999, 999999);
 
 -- ============================================================================
 -- SEED DATA: Admin başlangıç envanteri (silahlar)
