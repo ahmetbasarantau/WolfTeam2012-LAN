@@ -118,10 +118,20 @@ public final class Packet2012 {
         }
         // 3410b21a clears the active EX entitlement map, then reads count*u16.
         // Merely owning vouchers in 0x1431 does not enable the second main slot.
-        int active=0;
-        for(boolean value:unlocked) if(value) active++;
-        p.u8(active);
-        for(int set=0;set<4;set++) if(unlocked[set]) p.u16(10061+set);
+        java.util.TreeSet<Integer> activeCodes=new java.util.TreeSet<Integer>();
+        for(int set=0;set<4;set++) if(unlocked[set]) activeCodes.add(10061+set);
+        // The native bot difficulty selector 342b6450 checks this same EX
+        // entitlement map for ticket IDs 10095, 10096 and 10097.
+        String now=java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        for (Users.Item item:users.getItems(userId)) {
+            int code=catalog(item.id);
+            if (code < 10095 || code > 10097) continue;
+            String expiry=item.expiry==null?"":item.expiry.trim();
+            if (expiry.equalsIgnoreCase("permanent") || (expiry.matches("[0-9]{14}") && expiry.compareTo(now)>0))
+                activeCodes.add(code);
+        }
+        p.u8(activeCodes.size());
+        for(int code:activeCodes) p.u16(code);
         return p.finish();
     }
 
