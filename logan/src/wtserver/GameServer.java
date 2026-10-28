@@ -649,11 +649,21 @@ public class GameServer extends Server {
                     // 2012 uses the complete 0x1605 snapshot. The donor's
                     // 2013 0x1607 has a different member layout and corrupts
                     // existing peers before the following snapshot can repair it.
-                    if (!ServerConfig.CLIENT_2012) room.write(enterAck, client);
-                    // Broadcast the roster to EVERYONE in the room (not just the joiner) so players
-                    // already in the room see the new player appear in a slot. (Was: charsAck sent
-                    // only to the joiner -> a joined player was invisible to existing players.)
-                    room.write(charsAck);
+                    if (ServerConfig.CLIENT_2012) {
+                        // Existing members receive a native incremental join; the
+                        // joiner receives the complete room snapshot once.
+                        for (Client member : room.getUsers()) {
+                            if (member != client && !member.isBot()) {
+                                byte[] join = Packet2012.roomEnter(member.getSeqNum(), client);
+                                member.write(join, (short)join.length);
+                            }
+                        }
+                        byte[] roster = charsAck.getData(client.getSeqNum(), room);
+                        client.write(roster, charsAck.getSize());
+                    } else {
+                        room.write(enterAck, client);
+                        room.write(charsAck);
+                    }
                     writeToChannel(new FieldListAck(rooms));
                 }
             }else client.write(enterAck.getData(client.getSeqNum(), client, EnterAck.DOES_NOT_EXIST), enterAck.getSize());

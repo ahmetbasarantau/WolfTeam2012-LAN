@@ -146,6 +146,31 @@ public final class Packet2012 {
         return p.finish();
     }
 
+    // Native 2012 CS_FD_ENTER_ACK reader 341cf610: participant data is
+    // followed by equipment, character vectors and two network endpoints.
+    public static byte[] roomEnter(short seq, Client c) {
+        Packet2012 p=new Packet2012(0x1607,seq).u8(0);
+        p.u8(c.getRoomSlot()).u8(c.getRoomTeam()).u8(c.getRoomTeamSlot())
+         .u16(c.getSessionId()).u8(0).u8(0).u8(c.getUserLevel())
+         .u32(0).u32(0).ascii(c.getLoginName()).wide(c.getCallsign()).wide("");
+        Users users=new Users();
+        int[] eq=users.getEquipList(c.getUserId());
+        p.u8(4);
+        for(int set=0;set<4;set++) {
+            p.u8(set);
+            for(int i=0;i<Equipment2012.POWERS;i++) p.u16(catalog(eq[Equipment2012.POWER_BASE+i]));
+            p.u16(catalog(eq[set*6]));
+        }
+        int red=CharacterResolver.resolve(c.getUserId(),(byte)2)&65535;
+        int blue=CharacterResolver.resolve(c.getUserId(),(byte)1)&65535;
+        Map<Integer,int[]> clothing=users.getCharacterItems(c.getUserId());
+        characterAppearance(p,red,clothing.get(red));
+        characterAppearance(p,blue,clothing.get(blue));
+        p.u16(0).u8(1).u8(0).u8(0);
+        int[] ep=GameServer.INSTANCE.peerConnBlock(c);
+        return p.endpoint(ep[0],ep[1]).endpoint(ep[2],ep[3]).finish();
+    }
+
     public static byte[] roomRoster(short seq, GameServer.Room room) {
         Packet2012 p=new Packet2012(0x1605,seq).u8(0).u8(room.gameStarted?2:1).u8(room.getRoomMaster())
           .u16(room.getRoomNumber()).wide(room.getRoomTitle()).wide(room.getRoomPassword())
