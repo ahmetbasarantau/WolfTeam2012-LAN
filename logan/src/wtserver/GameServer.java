@@ -1051,7 +1051,7 @@ public class GameServer extends Server {
     //                   reachability (Hamachi/LAN). Safest unblock.
     //   2 HYBRID      : global = relay (always-reachable fallback), local = peer's direct endpoint (fast
     //                   path). Uses BOTH mechanisms at once -- the most faithful to the original scheme.
-    public static int PEER_ENDPOINT_MODE = 1;   // DIRECT_BOTH (start here to unblock; try 2 = HYBRID next)
+    public static int PEER_ENDPOINT_MODE = 2;   // Radmin: relay first, observed peer endpoint as fallback
 
     // BOT_SEAT_MODE — how AI bots are seated. LIVE FINDING (monke): the AI body RENDERS off the 0x1675
     // (AddAISlotAck) path, NOT the roster. Roster-seating makes the client treat the bot as a remote PLAYER
