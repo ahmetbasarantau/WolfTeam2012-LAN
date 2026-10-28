@@ -1,0 +1,174 @@
+[Controls]
+InvertMouse			= 0
+MouseLook			= 1
+InputRate			= 12
+Sensitivity			= 35
+NormalTurn			= 15
+FastTurn			= 23
+LookUp				= 25
+VehicleTurnRate		= 100
+AutoCenter			= 0
+UseJoystick			= 0
+Axis0 = 2
+Axis1 = 1
+Axis2 = 0
+Axis3 = 0
+Axis4 = 0
+Axis5 = 0
+POV0 = 2
+POV1 = 1
+POV2 = 0
+POV3 = 0
+GammaSliderDefault = 9
+
+
+
+[Bindings]
+Forward = "##17@ @ "
+Backward = "##31@ @ "
+StrafeLeft = "##30@ @ "
+StrafeRight = "##32@ @ "
+Left = "##203@ @ "
+Right = "##205@ @ "
+Strafe = "##56@ @ "
+Speed = "##42@ @ "
+Jump = "##57@ @ "
+Duck = "##29@ @ "
+TurnAround = "##14@ @ "
+LeanLeft = "##47@ @ "
+LeanRight = "##18@ @ "
+DuckLock = "##47@ @ "
+Fire = " @##3@ "
+Activate = " @##4@ "
+Reload = "##19@ @ "
+NextAmmo = "##33@ @ "
+NextWeapon = "##47@ @ "
+PrevWeapon = "##47@ @ "
+HolsterWeapon = "##35@ @ "
+LastWeapon = "##16@ @ "
+MoveBody = "##34@ @ "
+Flashlight = "##38@ @ "
+LookUp = "##200@ @ "
+LookDown = "##208@ @ "
+ZoomIn = "##47@ @ "
+CenterView = "##207@ @ "
+Inventory = "##50@ @ "
+ViewKeys = "##49@ @ "
+ViewIntel = "##23@ @ "
+Score = "##15@ @ "
+Mission = "##25@ @ "
+CompassToggle = "##47@ @ "
+Radio = "##47@ @ "
+SendMessage = "##28@ @ "
+NormalMessage = "##59@ @ "
+TeamMessage = "##60@ @ "
+PrideMessage = "##62@ @ "
+ChangeRifle = "##2@ @"
+ChangePistol = "##3@ @"
+ChangeCharacter = "##4@ @"
+ChangeGrenade = "##5@ @"
+ChangeBomb = "##6@ @"
+Number_1 = "##2@ @ "
+Number_2 = "##3@ @ "
+Number_3 = "##4@ @ "
+Number_4 = "##5@ @ "
+Number_5 = "##6@ @ "
+Number_6 = "##7@ @ "
+Number_7 = "##8@ @ "
+Number_8 = "##9@ @ "
+Number_9 = "##10@ @ "
+Number_10 = "##11@ @ "
+RadioMessage1 = "##44@ @ "
+RadioMessage2 = "##45@ @ "
+RadioMessage3 = "##46@ @ "
+MouseSensitiveUp = "##27@ @ "
+MouseSensitiveDown = "##26@ @ "
+ScreenGammaUp = "##40@ @ "
+ScreenGammaDown = "##39@ @ "
+EffectVolumeUp = "##52@ @ "
+EffectVolumeDown = "##51@ @ "
+MakeScreenShot = "##66@ @ "
+Messenger = "##63@ @ "
+Yes = "##21@ @ "
+No = "##49@ @ "
+QuickWeapon1 = " @#U@ "
+QuickWeapon2 = " @#D@ "
+WolfSteamPackUse = "##33@ @ "
+WolfMedicalKitUse = "##20@ @ "
+MultiWeaponChange = "##48@ @ "
+
+[Game]
+ChattingView0 = 1
+ChattingView1 = 1
+ChattingView2 = 1
+ChattingView3 = 1
+ChattingView4 = 1
+ChattingView5 = 1
+ChattingView6 = 1
+ChattingView7 = 1
+ChattingView8 = 1
+CrosshairAlpha = 255
+CrosshairRed = 109
+CrosshairGreen = 218
+CrosshairBlue = 84
+CrosshairDynamic = 1
+UseCrosshair = 1
+CrosshairStyle = 0
+Subtitles = 0
+FadeBodies = 0
+HUDLayout = 0
+MessageDur = 10
+HeadBob = 0
+Difficulty = 1
+AlwaysRun = 1
+Gore = 1
+WeaponSway = 10
+AutoWeaponSwitch = 1
+LoadScreenTips = 1
+VehicleContour = 1
+MinimapType = 1
+GrenadeAngle = 20
+GrenadeDefAngle = 20
+BanAddfriend = 0
+BanBuddyChat = 0
+BanGameInvite = 0
+Animation = 1
+
+
+
+[Sound]
+sound16bit = 1
+musicvolume = 1250
+soundvolume = 50
+battlevolume = 75
+decisionvolume = 75
+presoundvolume = 75
+premusicvolume = 175
+prebattlevolume = 75
+predecisionvolume = 75
+
+[Multiplayer]
+MaxPlayers = 4
+Port = 27888
+UsePassword = FALSE
+MPDifficulty = 1
+SkillAllowance = 10000
+FriendlyFire = TRUE
+MPPlayerDiffFactor = 0.1f
+BandwidthClient = 3
+BandwidthServer = 3
+BandwidthServerCustom = 1500
+BandwidthClientCustom = 1500
+PlayerSkills0 = -1
+PlayerSkills1 = -1
+PlayerSkills2 = -1
+PlayerSkills3 = -1
+PlayerSkills4 = -1
+PlayerSkills5 = -1
+PlayerSkills6 = -1
+PlayerSkills7 = -1
+PlayerSkills8 = -1
+
+[NetWork]
+NetWorkStats = 0
+

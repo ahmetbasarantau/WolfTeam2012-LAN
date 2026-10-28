@@ -47,7 +47,7 @@ Profiles/
 *.bak
 *.bin
 
-# Include only the working offline updater modules, never local client logs/config.
+# Updater and default profiles are explicitly tracked; local logs and personal changes remain ignored.
 /avital/*
 !/avital/webd.xoe
 !/avital/showerrorinfo.xoe

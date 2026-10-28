@@ -14,6 +14,8 @@ Bu depo, 2012 istemcisiyle **yalnız Radmin VPN üzerinden** arkadaşlarla oynam
 4. Sunucuyu kuracak bilgisayarda **1**; yalnızca arkadaşının sunucusuna bağlanacak bilgisayarda **2** seçin.
 5. Kurulum bittiğinde **Y** tuşuna basarsanız oyun doğrudan açılır. Sonradan başlatmak için `WolfteamBaslat.bat` dosyasına çift tıklayın.
 
+Yamada `avital` ve varsayılan `Profiles` dosyaları da bulunur. Güncellemede bunların üzerine yazarsanız oyun içi kişisel kontrol ve görüntü ayarlarınız sıfırlanabilir.
+
 Kurulum, oyunun LAN bileşenleri için taşınabilir Python'u indirir; Direct3D uyumluluk dosyaları yama ZIP'inde hazır gelir. Katılımcı bilgisayara Python veya Java kurmak gerekmez. Sunucu kurulurken JDK 17, PHP ve MariaDB oyun klasörünün içindeki `.runtime` dizinine indirilir; sistem PATH'ine eklenmez. Sunucu bilgisayarında envanter yöneticisi için Python/Tk ve Pillow da aynı şekilde yerel klasöre hazırlanır. Envanter yöneticisi başka bir bilgisayarda ilk kez açılırsa gerekli bileşenleri kendi `.runtime` klasörüne indirir. İlk kurulum internet bağlantısı gerektirir. Oyunu başlatırken yerel ağ kuralları için Windows yönetici izni istenir.
 
 Tüm oyuncular Radmin VPN'i açıp aynı Radmin ağına katılsın. Aynı evdeki oyuncular da Radmin kullanır. Herkes **WolfteamBaslat.bat** dosyasını açar. Sunucu sahibi **1** seçer; arkadaşları **2** seçip açık sunucuyu listeden seçer. Yerel oyuncu adı sorulduğunda mevcut adı seçin veya yeni bir ad oluşturun; parola yoktur.
