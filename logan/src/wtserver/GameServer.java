@@ -607,6 +607,7 @@ public class GameServer extends Server {
                         ExitAck exitAck = new ExitAck(room.getUserSlot(client));
                         room.write(exitAck);
                         room.removeUser(client);
+                        writeToChannel(new FieldListAck(rooms));
             ChannelCharsAck channelCharsAck = new ChannelCharsAck();
             client.write(channelCharsAck.getData(client.getSeqNum(), getChannelUsers()), channelCharsAck.getSize());
                     }
@@ -653,6 +654,7 @@ public class GameServer extends Server {
                     // already in the room see the new player appear in a slot. (Was: charsAck sent
                     // only to the joiner -> a joined player was invisible to existing players.)
                     room.write(charsAck);
+                    writeToChannel(new FieldListAck(rooms));
                 }
             }else client.write(enterAck.getData(client.getSeqNum(), client, EnterAck.DOES_NOT_EXIST), enterAck.getSize());
             
@@ -2469,6 +2471,7 @@ public class GameServer extends Server {
                 ExitAck exitAck = new ExitAck(room.getUserSlot(c));
                 room.write(exitAck);
                 room.removeUser(c);
+                writeToChannel(new FieldListAck(rooms));
             }
         }
         super.removeClient(c);

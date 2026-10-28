@@ -141,7 +141,7 @@ public final class Packet2012 {
             p.u16(r.getRoomNumber()).wide(r.getRoomTitle()).u8(r.getRoomPassword().isEmpty()?0:1)
              .u8(r.gameStarted?1:0).u8(r.getMap()).u32(r.getMode()).u8(r.getWins())
              .u16(r.getTime()).u16(r.getPoints()&255).u8(0).u16(0)
-             .u8(0).u8(0).u8(0).u8(0).u8(0).u8(MIN_ROOM_RANK).u8(MAX_ROOM_RANK);
+             .u8(0).u8(0).u8(r.getCapacity()).u8(r.getNumberOfUsers()).u8(0).u8(MIN_ROOM_RANK).u8(MAX_ROOM_RANK);
         }
         return p.finish();
     }
